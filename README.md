@@ -1,0 +1,130 @@
+# TMU Facilitator Certification
+
+The app for the Q4 2026 TMU facilitator re-certification. Facilitators take three modules, graders score them against the scorecard, and leaders get an overview and exec summaries.
+
+- **Facilitators**: give recording consent. Module 1: a 15-minute dashboard review, then a 5-minute readout; both are timed on the server. The live coaching session follows. Module 2: watch a recording (one replay allowed), tag moments, then write a 25-minute debrief. Module 2 unlocks only after Module 1 is passed. Module 3: see the assigned section, the session date and the learner cards they play.
+- **Graders**: work a queue filtered by module, cohort and region. They see the evidence on the left and the scorecard on the right. Red flags automatically set a module to not passed. The Module 2 answer key appears as a checklist. Calibration diffs show when a submission has two gradings. Graders also set the outcome with the rules engine's suggestion, and write or approve an AI-drafted exec summary.
+- **Admins**: create cohorts and invite users. Auto-assign hands out cases, recordings, sections and learner cards by the rules in the requirements doc. Admins can override any assignment, open a reassessment on the alternate version, and edit timers and scorecard levels.
+- **Leaders**: see status by facilitator, region and program, the average score per dimension, and approved exec summaries. They can export to PDF from the browser's print dialog.
+
+## Architecture
+
+| Layer | Choice | Why |
+| --- | --- | --- |
+| Hosting | **Vercel**, Next.js 16 App Router | Server components and server actions keep every data call on the server. Preview deployments per branch. |
+| Database and auth | **Supabase** (Postgres, Auth, Storage) | Row-level security enforces the "cannot see" column of the roles table inside the database itself, not only in the UI. |
+| Sign-in | Invite-only magic links, with optional Microsoft (Entra ID) SSO | No passwords to manage. Public sign-up is disabled. |
+| Timers and gates | Postgres `SECURITY DEFINER` functions (`start_module`, `save_response`, `advance_phase`, `record_play`, `add_tag`, `sync_submission`) | Deadlines use the database clock. The browser cannot extend a timer, skip the Module 2 gate or exceed the replay limit. |
+| Module 2 videos | Private Storage bucket `module2-recordings` | The server hands a 45-minute signed URL only to a facilitator whose Module 2 is in progress. |
+| Module 1 and 3 recordings | Teams links attached by the grader (v1 scope) | Matches the requirements: in-browser recording is v2. |
+| Exec summaries | Claude API (`claude-opus-5-5`, structured output) | Drafts follow the fixed structure from scores and grader notes. A grader must approve a draft before leaders see it. |
+
+### Security model
+
+- Every table has RLS enabled, and the `anon` role has no access.
+- Facilitators **never** receive scenarios, role-player briefs, twists, answer keys, gradings or other people's records. They read only their own submissions, their assigned dashboard version (after they start Module 1), section titles and the learner cards they personally play (via `my_cards()`).
+- Facilitators cannot write tables directly. Column grants stop graders and admins from rewriting a facilitator's readout or debrief.
+- Graders see only cohorts they are assigned to. Leaders get aggregates through `leader_overview()` and `dimension_averages()` and see approved summaries only, with no recordings, tags or raw notes.
+- `scripts/db-security-test.sql` runs 33 checks for these rules. CI runs it on every PR.
+
+### Code map
+
+```
+supabase/migrations/   schema, RLS + RPCs, reference content (dashboards, cases, answer keys, cards), storage bucket
+supabase/seed.sql      local demo users (admin, grader, leader, 3 facilitators @example.com)
+supabase/templates/    invite + magic-link emails (token-hash links -> /auth/confirm)
+src/lib/rules.ts       pass rules, red flags, answer-key standard, outcome logic (unit tested)
+src/lib/assignment.ts  case / recording / section / learner-card assignment (unit tested)
+src/lib/exec-summary.ts  Claude draft of the exec summary
+src/app/facilitator    consent, module flows, Team 7/12 dashboard, video + tags, debrief
+src/app/grader         queue, evidence + scorecard, calibration, outcome, exec summary
+src/app/admin          cohorts, auto-assign, users/invites, scenario library, settings
+src/app/leader         overview, dimension averages, approved summaries, PDF export
+src/proxy.ts           session refresh + sign-in redirect (Next 16 "proxy", formerly middleware)
+```
+
+## Deploy: Supabase and Vercel
+
+### 1. Create the Supabase project
+
+1. Create a project at [supabase.com](https://supabase.com). Use the **Pro plan** for daily backups and point-in-time recovery, since this data is the record of certification.
+2. **Region:** pick it with the privacy team (see open decisions below). `ap-southeast-1` (Singapore) is the default suggestion because it sits closest to the Philippines and India. Keep the Vercel function region next to the database: `vercel.json` sets `sin1`.
+3. Push the schema and reference content:
+
+   ```bash
+   npx supabase login
+   npx supabase link --project-ref <your-project-ref>
+   npx supabase db push          # applies supabase/migrations (seed.sql is local-only)
+   ```
+
+### 2. Configure Supabase Auth (dashboard → Authentication)
+
+- **Sign In / Providers → User signups:** turn off "Allow new users to sign up". Keep the **Email** provider enabled.
+- **URL Configuration:** set Site URL to your production URL (e.g. `https://tmu-cert.vercel.app`). Add these redirect URLs: `https://tmu-cert.vercel.app/**`, `https://*-<your-team>.vercel.app/**` (previews) and `http://localhost:3000/**`.
+- **Emails → Templates:** paste `supabase/templates/invite.html` into *Invite user* and `supabase/templates/magic_link.html` into *Magic Link*. Invites will not work without the invite template. The default template sends tokens in a URL fragment that a server can't read.
+- **Emails → SMTP Settings:** set up custom SMTP, such as the company relay, SendGrid, Resend or Postmark. The built-in sender is rate-limited to a handful of emails per hour and is not meant for production.
+- **Optional, Microsoft SSO:** enable the Azure provider with an Entra ID app registration. Set the redirect URI to `https://<project-ref>.supabase.co/auth/v1/callback`. Then set `NEXT_PUBLIC_AZURE_SSO_ENABLED=true` in Vercel. Users still need an invite first, because sign-ups are off.
+
+### 3. Upload the Module 2 recordings
+
+In **Storage → module2-recordings**, upload the four videos with these exact file names: `rec-coaching-A.mp4`, `rec-hiring-A.mp4`, `rec-coaching-B.mp4` and `rec-hiring-B.mp4`. Admin → Scenario library shows which ones are uploaded. Burn the subtitles for all four regions into the videos: the v1 player has no separate subtitle track.
+
+### 4. Deploy to Vercel
+
+1. In Vercel, **Add New → Project** and import this GitHub repo. The framework is detected as Next.js.
+2. Add the Supabase integration (**Integrations → Supabase**) and connect it to the project. It fills `NEXT_PUBLIC_SUPABASE_URL`, the publishable/anon key and the secret/service-role key for every environment. You can also set them by hand from `.env.example`.
+3. Add these environment variables yourself:
+   - `NEXT_PUBLIC_SITE_URL`: the production URL. Set it for Production only; previews fall back to `VERCEL_URL`.
+   - `ANTHROPIC_API_KEY`: for AI-drafted exec summaries. Without it, the "Draft with AI" button is hidden.
+   - `NEXT_PUBLIC_AZURE_SSO_ENABLED`: `true` once SSO is configured.
+4. Deploy. Pushes to `main` deploy to production, and other branches get preview URLs.
+
+> Previews share the production database unless you enable [Supabase branching](https://supabase.com/docs/guides/deployment/branching) or point Preview env vars at a separate staging project. Use a staging project before real facilitator data is loaded.
+
+### 5. Create the first admin
+
+1. Supabase dashboard → **Authentication → Users → Invite user**, with your email.
+2. In the **SQL editor**, run:
+   ```sql
+   update public.profiles set role = 'admin', full_name = 'Your Name' where email = 'you@company.com';
+   ```
+3. Accept the invite email. From then on, invite everyone else from **Admin → Users**.
+
+### 6. Run a cycle
+
+1. **Admin → Cohorts:** create a cohort of 3–4 people with a region and week, add facilitators, and assign two graders. Click **Auto-assign**, then check the warnings.
+2. Set the Module 1 coaching slot per facilitator from the grader's submission page, and the Module 3 teach-back date on the cohort page.
+3. Graders attach the Teams recording links and grade. A second grader on the same submission counts as a calibration grading, and the app shows the per-dimension differences.
+4. After grading, open **Outcome & exec summary** and confirm the outcome. Draft the summary, edit it and approve it.
+5. If a module is not passed, the cohort page offers **Open reassessment**: a second try on Version B or the spare case.
+
+## Local development
+
+You need Docker and Node 22.
+
+```bash
+npm install
+npx supabase start            # Postgres, Auth, Storage, Mailpit; applies migrations + seed
+cp .env.example .env.local    # paste the publishable + secret keys printed by `supabase start`
+npm run dev                   # http://localhost:3000
+```
+
+Sign in as `admin@example.com`, `grader@example.com`, `leader@example.com` or `fac1@example.com` (`fac2`, `fac3` also exist). Open the magic link from Mailpit at http://127.0.0.1:54324.
+
+| Command | What it does |
+| --- | --- |
+| `npm run lint` / `npm run typecheck` / `npm test` | ESLint, TypeScript, Vitest (rules and assignment) |
+| `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres npm run db:test` | RLS and RPC security test (rolls back) |
+| `npx supabase db reset` | Rebuild the local DB from migrations and seed |
+| `npm run db:types` | Generate full DB types from the linked project |
+
+Change the schema with a new file in `supabase/migrations/` (`npx supabase migration new <name>`). Never edit a migration that has already run in production.
+
+## Open items carried from the requirements doc
+
+- **Consent wording, storage location and retention:** the consent text in the app is a placeholder, marked as such on screen. Confirm it with the privacy team for all four regions. That review also settles the Supabase region.
+- **Pass rules and outcome definitions** are COE proposals. They live in one file (`src/lib/rules.ts`, with tests), plus the Module 2 thresholds in each recording's `brief.pass_standard`.
+- **Version B (Team 12) briefs and answer keys** were adapted automatically from Version A. Each one is flagged "draft wording" in the scenario library until COE reviews it.
+- **Module 3 section pool** is the proposed list. Edit `public.sections` once Design confirms scope.
+- **Who sees exec summaries:** currently the `leader` role. Invite Regional Leads, COE and SVP as leaders.
+- **Pilot:** the pilot runs on forms and Teams before the app. Fix the scorecard from the pilot, then update dimension levels in Admin → Settings.
