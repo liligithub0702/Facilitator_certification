@@ -95,7 +95,7 @@ function friendly(code: string | undefined, status: number | undefined, message:
         : `The sign-in service had a problem. Try again shortly.${ref}`;
   }
   if (/<!DOCTYPE|not valid JSON|fetch failed/i.test(message))
-    return `The app can't reach Supabase. Check NEXT_PUBLIC_SUPABASE_URL in Vercel: it must look like https://<project-id>.supabase.co, then redeploy.${ref}`;
+    return `The app can't reach Supabase. Check SUPABASE_URL in Vercel: it must look like https://<project-id>.supabase.co, then redeploy.${ref}`;
   if (status === 401 || /api key/i.test(message)) return `The app is not connected to Supabase correctly (check the keys in Vercel).${ref}`;
   return `${message}${ref}`;
 }

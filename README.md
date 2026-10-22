@@ -75,9 +75,9 @@ In **Storage → module2-recordings**, upload the four videos with these exact f
 ### 4. Deploy to Vercel
 
 1. In Vercel, **Add New → Project** and import this GitHub repo. The framework is detected as Next.js.
-2. Add the Supabase integration (**Integrations → Supabase**) and connect it to the project. It fills `NEXT_PUBLIC_SUPABASE_URL`, the publishable/anon key and the secret/service-role key for every environment. You can also set them by hand from `.env.example`.
+2. Add the Supabase integration (**Integrations → Supabase**) and connect it to the project. It fills the Supabase URL and keys for every environment; the app accepts its `NEXT_PUBLIC_*` names. Or set them by hand from `.env.example`: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`. All are read on the server only.
 3. Add these environment variables yourself:
-   - `NEXT_PUBLIC_SITE_URL`: the production URL. Set it for Production only; previews fall back to `VERCEL_URL`.
+   - `SITE_URL`: the production URL. Set it for Production only; previews fall back to `VERCEL_URL`.
    - `ANTHROPIC_API_KEY`: for AI-drafted exec summaries. Without it, the "Draft with AI" button is hidden.
    - `NEXT_PUBLIC_AZURE_SSO_ENABLED`: `true` once SSO is configured.
 4. Deploy. Pushes to `main` deploy to production, and other branches get preview URLs.

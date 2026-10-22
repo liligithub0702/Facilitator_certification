@@ -1,11 +1,18 @@
-// Accepts both the new Supabase key names (publishable / secret) and the legacy ones
-// (anon / service_role) that the Vercel integration may still inject.
-export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-export const SUPABASE_PUBLIC_KEY =
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// Supabase is only called from the server, so plain names (SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
+// are preferred. NEXT_PUBLIC_* and the legacy anon/service_role names from the Vercel
+// integration are still accepted.
+export const SUPABASE_URL = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
+export const SUPABASE_PUBLIC_KEY = (
+  process.env.SUPABASE_PUBLISHABLE_KEY ??
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+  process.env.SUPABASE_ANON_KEY ??
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+  ""
+).trim();
 
 export function siteUrl(): string {
-  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+  const configured = process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL;
+  if (configured) return configured.trim().replace(/\/$/, "");
   if (process.env.VERCEL_ENV === "production" && process.env.VERCEL_PROJECT_PRODUCTION_URL)
     return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
