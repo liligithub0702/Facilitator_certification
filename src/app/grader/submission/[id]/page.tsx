@@ -9,7 +9,19 @@ import { addRecording, removeRecording, setSession } from "../../actions";
 import { ScorecardForm } from "./ScorecardForm";
 import { SessionInput } from "./SessionInput";
 
+type AgentBrief = {
+  archetype?: string;
+  public?: { headline: string; observations: string[] };
+  hidden?: string;
+  unlock?: string;
+  twists?: { minute: number; line: string; tests: string }[];
+  good?: string[];
+  red_flags?: string[];
+};
+
 type Brief = {
+  /** Each agent is a scenario (team-coaching scenarios). */
+  agents?: Record<string, AgentBrief>;
   agent?: string;
   archetype?: string;
   public?: { headline: string; observations: string[] };
@@ -72,6 +84,9 @@ export default async function GradeSubmission({ params }: PageProps<"/grader/sub
   const others = (gradings ?? []).filter((g) => g.grader_id !== profile.id);
   const isCalibration = mine ? mine.is_calibration : others.some((g) => !g.is_calibration);
   const brief = (scenario?.brief ?? {}) as Brief;
+  // The role-play brief follows the agent the facilitator chose (older per-case scenarios carry one agent).
+  const chosenAgent = s.readout?.agent || brief.agent || "";
+  const roleplay: AgentBrief | undefined = brief.agents ? brief.agents[chosenAgent] : brief.agent ? brief : undefined;
   const person = s.attempts.profiles;
 
   const submittedGradings = (gradings ?? []).filter((g) => g.submitted_at);
@@ -106,20 +121,12 @@ export default async function GradeSubmission({ params }: PageProps<"/grader/sub
                 <p className="eyebrow">Who they chose to coach</p>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-2xl font-extrabold">{s.readout.agent || "Not chosen yet"}</span>
-                  {s.readout.agent && brief.agent && (
-                    s.readout.agent === brief.agent ? (
-                      <span className="badge border-ok/30 bg-ok-bg text-ok">the flagged agent</span>
-                    ) : (
-                      <span className="badge border-warn/30 bg-warn-bg text-warn">not the flagged agent ({brief.agent})</span>
-                    )
-                  )}
+                  {roleplay?.archetype && <span className="badge">{roleplay.archetype}</span>}
                 </div>
-                {s.readout.agent && brief.agent && s.readout.agent !== brief.agent && (
-                  <p className="text-sm text-ink-soft">
-                    Role-play {s.readout.agent} as a solid performer who is surprised to be picked (“Why me?”). Score the choice and
-                    rationale under Preparation.
-                  </p>
-                )}
+                <p className="text-sm text-ink-soft">
+                  Every agent is a scenario: the facilitator saw this agent&apos;s observations after picking them, and you play this agent in
+                  the live session. Score the choice and its rationale under Preparation.
+                </p>
               </section>
               <section className="card space-y-2">
                 <h2 className="h2">Preparation</h2>
@@ -186,29 +193,32 @@ export default async function GradeSubmission({ params }: PageProps<"/grader/sub
             </section>
           )}
 
-          {scenario && mod === 1 && (
+          {scenario && mod === 1 && !roleplay && (
+            <p className="card text-sm text-brand-gray">The role-play brief appears here once the facilitator has chosen who to coach.</p>
+          )}
+          {scenario && mod === 1 && roleplay && (
             <details className="card text-sm" open>
-              <summary className="cursor-pointer font-semibold">Role-play brief: you play {brief.agent} (grader-only)</summary>
+              <summary className="cursor-pointer font-semibold">Role-play brief: you play {chosenAgent} (grader-only)</summary>
               {brief.draft && <p className="mt-2 text-warn">{brief.draft}</p>}
               <div className="mt-3 space-y-3">
-                {brief.archetype && <p><strong>Scenario:</strong> {brief.archetype}. This is the facilitator&apos;s first coaching session with {brief.agent} this month.</p>}
-                {brief.public && (
+                {roleplay.archetype && <p><strong>Scenario:</strong> {roleplay.archetype}. This is the facilitator&apos;s first coaching session with {chosenAgent} this month.</p>}
+                {roleplay.public && (
                   <div className="rounded-chip bg-canvas p-3">
                     <p className="font-medium">What the facilitator was shown</p>
-                    <p className="mt-1">{brief.public.headline}</p>
-                    <ul className="mt-1 list-disc pl-5">{brief.public.observations.map((o) => <li key={o}>{o}</li>)}</ul>
+                    <p className="mt-1">{roleplay.public.headline}</p>
+                    <ul className="mt-1 list-disc pl-5">{roleplay.public.observations.map((o) => <li key={o}>{o}</li>)}</ul>
                   </div>
                 )}
-                <p><strong>What {brief.agent} knows but won&apos;t volunteer:</strong> {brief.hidden}</p>
-                <p><strong>Reveal it only when:</strong> {brief.unlock} Closed or leading questions don&apos;t unlock it.</p>
+                <p><strong>What {chosenAgent} knows but won&apos;t volunteer:</strong> {roleplay.hidden}</p>
+                <p><strong>Reveal it only when:</strong> {roleplay.unlock} Closed or leading questions don&apos;t unlock it.</p>
                 <table className="table">
-                  <thead><tr><th>Minute</th><th>{brief.agent} says (word for word)</th><th>Tests</th></tr></thead>
-                  <tbody>{brief.twists?.map((t) => <tr key={t.minute}><td>{t.minute}</td><td>{t.line}</td><td>{t.tests}</td></tr>)}</tbody>
+                  <thead><tr><th>Minute</th><th>{chosenAgent} says (word for word)</th><th>Tests</th></tr></thead>
+                  <tbody>{roleplay.twists?.map((t) => <tr key={t.minute}><td>{t.minute}</td><td>{t.line}</td><td>{t.tests}</td></tr>)}</tbody>
                 </table>
                 <p className="font-medium">What good looks like</p>
-                <ul className="list-disc pl-5">{brief.good?.map((g) => <li key={g}>{g}</li>)}</ul>
-                <p className="font-medium">Case red flags</p>
-                <ul className="list-disc pl-5">{brief.red_flags?.map((g) => <li key={g}>{g}</li>)}</ul>
+                <ul className="list-disc pl-5">{roleplay.good?.map((g) => <li key={g}>{g}</li>)}</ul>
+                <p className="font-medium">Red flags for this scenario</p>
+                <ul className="list-disc pl-5">{roleplay.red_flags?.map((g) => <li key={g}>{g}</li>)}</ul>
               </div>
             </details>
           )}

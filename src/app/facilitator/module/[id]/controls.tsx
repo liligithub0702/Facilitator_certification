@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { ObservationList, type AgentNotes } from "@/components/Dashboard";
 import type { FormField } from "@/lib/types";
 import { addTag, advancePhase, recordPlay, saveResponse, startModule } from "../../actions";
 
@@ -61,6 +62,7 @@ export function ResponseForm({
   submitLabel,
   agents,
   prefillKey,
+  agentNotes,
 }: {
   id: string;
   fields: readonly FormField[];
@@ -71,6 +73,8 @@ export function ResponseForm({
   agents?: string[];
   /** localStorage key holding the agent picked on the dashboard, used to pre-fill the agent field. */
   prefillKey?: string;
+  /** Observations per agent, shown under the agent picker once someone is chosen. */
+  agentNotes?: AgentNotes;
 }) {
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(initial);
@@ -176,6 +180,11 @@ export function ResponseForm({
             }}
             onBlur={() => dirty.current && void save(false)}
           />
+          )}
+          {f.kind === "agent" && values[f.key] && agentNotes?.[values[f.key]] && (
+            <div className="mt-3 rounded-card border-l-4 border-l-brand-magenta bg-canvas p-4">
+              <ObservationList agent={values[f.key]} note={agentNotes[values[f.key]]} />
+            </div>
           )}
           {tags && tags.length > 0 && (
             <div className="mt-1 flex flex-wrap gap-1">

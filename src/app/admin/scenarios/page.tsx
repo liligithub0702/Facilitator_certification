@@ -30,10 +30,11 @@ export default async function ScenarioLibrary() {
 
       <section className="space-y-3">
         <h2 className="h2">Module 1 cases</h2>
-        {scenarios?.filter((s) => s.module === 1).map((s) => (
+        {scenarios?.filter((s) => s.module === 1).sort((a, b) => Number(b.active) - Number(a.active)).map((s) => (
           <details key={s.id} className="card">
             <summary className="cursor-pointer font-medium">
               {s.title} <span className="badge ml-1">Version {s.version}</span>
+              {!s.active && <span className="badge ml-1">retired</span>}
               {Boolean((s.brief as { draft?: string }).draft) && <span className="badge ml-1 border-warn text-warn">draft wording</span>}
             </summary>
             <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs">{JSON.stringify(s.brief, null, 2)}</pre>

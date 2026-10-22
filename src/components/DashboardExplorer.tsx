@@ -5,7 +5,7 @@
 // KPI Performance Dashboard workbook, kept to a few clear filters.
 
 import { useEffect, useMemo, useState } from "react";
-import { Panel, Sparkline, type DashboardData, type QaAudit } from "./Dashboard";
+import { ObservationList, Panel, Sparkline, type AgentNotes, type DashboardData, type QaAudit } from "./Dashboard";
 
 const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -60,7 +60,18 @@ function AuditCard({ a, pass }: { a: QaAudit; pass: number }) {
 
 type SortKey = "agent" | "primary" | "qa" | "csat" | "calls" | "attendance" | "fails";
 
-export function AgentExplorer({ data, storageKey, flaggedAgent }: { data: DashboardData; storageKey?: string; flaggedAgent?: string }) {
+export function AgentExplorer({
+  data,
+  storageKey,
+  notes,
+  initialAgent,
+}: {
+  data: DashboardData;
+  storageKey?: string;
+  /** Observations per agent (each agent is a scenario). */
+  notes?: AgentNotes;
+  initialAgent?: string;
+}) {
   const weeks = data.weeks;
   const pass = data.qa_pass ?? 82;
   const p = data.primary;
@@ -68,11 +79,11 @@ export function AgentExplorer({ data, storageKey, flaggedAgent }: { data: Dashbo
   const [week, setWeek] = useState("all");
   const [tenure, setTenure] = useState("all");
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "agent", dir: 1 });
-  const [selected, setSelected] = useState("");
+  const [selected, setSelected] = useState(initialAgent ?? "");
 
   // Remember the choice for the preparation form (per browser; the form is the record).
   useEffect(() => {
-    if (!storageKey) return;
+    if (!storageKey || initialAgent) return;
     try {
       const saved = window.localStorage.getItem(storageKey);
       // Browser storage only exists after mount; reading it here avoids a hydration mismatch.
@@ -81,7 +92,7 @@ export function AgentExplorer({ data, storageKey, flaggedAgent }: { data: Dashbo
     } catch {
       /* storage unavailable */
     }
-  }, [storageKey]);
+  }, [storageKey, initialAgent]);
   const choose = (name: string) => {
     setSelected(name);
     if (!storageKey) return;
@@ -145,14 +156,13 @@ export function AgentExplorer({ data, storageKey, flaggedAgent }: { data: Dashbo
           <div className="min-w-64 flex-1">
             <p className="eyebrow">Your choice</p>
             <h3 className="mt-1 text-lg font-extrabold">Who do you want to coach?</h3>
-            <p className="text-sm text-brand-gray">Pick an agent to see their profile, week-by-week numbers and QA observations. You confirm your choice on the next step.</p>
+            <p className="text-sm text-brand-gray">Pick an agent to see their observations, profile, week-by-week numbers and QA audits. You confirm your choice on the next step.</p>
           </div>
           <select className="input max-w-64 text-base font-semibold" value={selected} onChange={(e) => choose(e.target.value)} aria-label="Who do you want to coach?">
             <option value="">Choose an agent…</option>
             {agents.map((a) => (
               <option key={a} value={a}>
                 {a}
-                {a === flaggedAgent ? " (coaching flag)" : ""}
               </option>
             ))}
           </select>
@@ -177,6 +187,13 @@ export function AgentExplorer({ data, storageKey, flaggedAgent }: { data: Dashbo
               </dl>
             )}
           </div>
+
+          {notes?.[selected] && (
+            <div className="rounded-card border-l-4 border-l-brand-magenta bg-canvas p-5">
+              <p className="eyebrow mb-2">Observations</p>
+              <ObservationList agent={selected} note={notes[selected]} />
+            </div>
+          )}
 
           <div className="overflow-x-auto">
             <table className="table">

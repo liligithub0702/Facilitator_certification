@@ -62,8 +62,9 @@ export type QaAudit = {
 
 export type AgentProfile = { name: string; tenure: string; about: string; interests: string; coaching: string };
 
-/** The facilitator-visible part of the case: the agent flagged for coaching this week. */
-export type CoachingFlag = { agent: string; public: { headline: string; observations: string[] } };
+/** Facilitator-visible observations for one agent (each agent is a scenario). */
+export type AgentNote = { headline: string; observations: string[] };
+export type AgentNotes = Record<string, AgentNote>;
 
 // jsonb does not keep key order, so the display order is fixed here.
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -209,37 +210,21 @@ function initials(name: string) {
   return name.slice(0, 2).toUpperCase();
 }
 
-function FlagCard({ flag, profile }: { flag: CoachingFlag; profile?: AgentProfile }) {
+/** An agent's observation list, shown once the facilitator picks that agent. */
+export function ObservationList({ agent, note }: { agent: string; note: AgentNote }) {
   return (
-    <section className="card border-l-4 border-l-brand-magenta">
-      <p className="eyebrow">This week&apos;s coaching flag</p>
-      <div className="mt-2 grid gap-5 lg:grid-cols-[260px_1fr]">
-        <div className="rounded-card bg-[linear-gradient(160deg,var(--color-brand-indigo-soft),var(--color-brand-indigo-deep))] p-5 text-white">
-          <span className="grid size-14 place-items-center rounded-full bg-white/15 text-lg font-extrabold ring-2 ring-white/30">{initials(flag.agent)}</span>
-          <p className="mt-3 text-xl font-extrabold">{flag.agent}</p>
-          {profile && (
-            <dl className="mt-2 space-y-2 text-sm text-white/85">
-              <div><dt className="text-[11px] font-bold tracking-wide text-white/55 uppercase">Tenure</dt><dd>{profile.tenure}</dd></div>
-              <div><dt className="text-[11px] font-bold tracking-wide text-white/55 uppercase">About</dt><dd>{profile.about}</dd></div>
-              <div><dt className="text-[11px] font-bold tracking-wide text-white/55 uppercase">Interests</dt><dd>{profile.interests}</dd></div>
-              <div><dt className="text-[11px] font-bold tracking-wide text-white/55 uppercase">Coaching preference</dt><dd>{profile.coaching}</dd></div>
-            </dl>
-          )}
-        </div>
-        <div>
-          <h3 className="text-lg font-extrabold">{flag.public.headline}</h3>
-          <p className="mt-1 text-sm text-brand-gray">From this month&apos;s data and call monitoring. This would be your first coaching session with {flag.agent} this month.</p>
-          <ul className="mt-3 space-y-2 text-[15px]">
-            {flag.public.observations.map((o) => (
-              <li key={o} className={/^[a-z]\)/.test(o) ? "ml-6 text-ink-soft" : "flex gap-2"}>
-                {!/^[a-z]\)/.test(o) && <span className="text-brand-magenta">●</span>}
-                <span>{o}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </section>
+    <div>
+      <h4 className="text-lg font-extrabold">{note.headline}</h4>
+      <p className="mt-1 text-sm text-brand-gray">From this month&apos;s data and call monitoring. This would be your first coaching session with {agent} this month.</p>
+      <ul className="mt-3 space-y-2 text-[15px]">
+        {note.observations.map((o) => (
+          <li key={o} className={/^[a-z]\)/.test(o) ? "ml-6 text-ink-soft" : "flex gap-2"}>
+            {!/^[a-z]\)/.test(o) && <span className="text-brand-magenta">●</span>}
+            <span>{o}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -254,15 +239,19 @@ type TabId = (typeof TABS)[number]["id"];
 
 export function Dashboard({
   data,
-  flag,
+  notes,
   storageKey,
+  initialAgent,
 }: {
   data: DashboardData;
-  flag?: CoachingFlag | null;
+  /** Observations per agent, from the facilitator's scenario. */
+  notes?: AgentNotes | null;
+  /** Agent to open on the Agents tab (e.g. the one already chosen). */
+  initialAgent?: string;
   /** Where the "Who do you want to coach?" choice is remembered for the preparation form. */
   storageKey?: string;
 }) {
-  const [tab, setTab] = useState<TabId>("overview");
+  const [tab, setTab] = useState<TabId>(initialAgent ? "agents" : "overview");
   const tabsTop = useRef<HTMLDivElement>(null);
   const openTab = (id: TabId) => {
     setTab(id);
@@ -307,7 +296,6 @@ export function Dashboard({
         </div>
       </section>
 
-      {flag && <FlagCard flag={flag} profile={data.profiles?.find((p) => p.name === flag.agent)} />}
 
       <div ref={tabsTop} />
       <nav className="no-print sticky top-[132px] z-[5] -mx-1 flex gap-1 overflow-x-auto rounded-full border border-line bg-paper/95 p-1 shadow-soft backdrop-blur" role="tablist" aria-label="Dashboard sections">
@@ -463,7 +451,7 @@ export function Dashboard({
 
       {tab === "agents" && (
         data.weekly?.length ? (
-          <AgentExplorer data={data} storageKey={storageKey} flaggedAgent={flag?.agent} />
+          <AgentExplorer data={data} storageKey={storageKey} notes={notes ?? undefined} initialAgent={initialAgent} />
         ) : (
           <>
       {/* Agent table */}
@@ -597,7 +585,7 @@ export function Dashboard({
         <Panel title="Meet your team" what="Who your agents are and how each of them likes to be coached.">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {data.profiles.map((p) => (
-              <div key={p.name} className={`rounded-card border p-4 ${flag?.agent === p.name ? "border-brand-magenta/50 bg-brand-magenta/5" : "border-line bg-canvas"}`}>
+              <div key={p.name} className="rounded-card border border-line bg-canvas p-4">
                 <div className="flex items-center gap-3">
                   <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-indigo text-sm font-extrabold text-white">{initials(p.name)}</span>
                   <div>

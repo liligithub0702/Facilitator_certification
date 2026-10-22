@@ -19,7 +19,7 @@ with a as (
 ) insert into ctx select 'attempt', id from a;
 with s as (
   insert into module_submissions (attempt_id, module, scenario_id)
-  select (select v from ctx where k = 'attempt'), 1, id from scenarios where family = 'case-1' and version = 'A' returning id
+  select (select v from ctx where k = 'attempt'), 1, id from scenarios where family = 'team-coaching' and version = 'A' returning id
 ) insert into ctx select 'm1', id from s;
 with s as (
   insert into module_submissions (attempt_id, module, scenario_id)
@@ -52,10 +52,11 @@ select pg_temp.expect((select count(*) from module_submissions) = 2, 'facilitato
 select pg_temp.expect_error($$select start_module((select v from ctx where k = 'm1'))$$, 'start without consent');
 select accept_consent((select v from ctx where k = 'attempt'));
 select pg_temp.expect_error($$select start_module((select v from ctx where k = 'm2'))$$, 'Module 2 gate');
-select pg_temp.expect(case_brief((select v from ctx where k = 'm1')) is null, 'case flag hidden before Module 1 starts');
+select pg_temp.expect(case_brief((select v from ctx where k = 'm1')) is null, 'observations hidden before Module 1 starts');
 select pg_temp.expect((select phase from start_module((select v from ctx where k = 'm1'))) = 'dashboard', 'Module 1 starts on dashboard');
-select pg_temp.expect(case_brief((select v from ctx where k = 'm1')) ->> 'agent' = 'Jordan', 'case flag visible after start');
-select pg_temp.expect(case_brief((select v from ctx where k = 'm1')) -> 'hidden' is null, 'case flag excludes the role-play brief');
+select pg_temp.expect(case_brief((select v from ctx where k = 'm1')) -> 'agents' -> 'Maya' ->> 'headline' is not null, 'every agent''s observations visible after start');
+select pg_temp.expect(jsonb_array_length(jsonb_path_query_array(case_brief((select v from ctx where k = 'm1')), '$.agents.*')) = 14, 'all 14 agents are scenarios');
+select pg_temp.expect(case_brief((select v from ctx where k = 'm1'))::text not like '%"hidden"%', 'observations exclude the role-play brief');
 select pg_temp.expect((select count(*) from dashboards) = 1, 'assigned dashboard visible after start');
 select pg_temp.expect((select readout = '{}' from save_response((select v from ctx where k = 'm1'), '{"observations":"x"}')), 'readout not writable during dashboard phase');
 select pg_temp.expect((select phase from advance_phase((select v from ctx where k = 'm1'))) = 'readout', 'advance to readout');
@@ -72,7 +73,7 @@ select pg_temp.expect_error($$insert into tags (submission_id, at_seconds, note)
 -- ---------------- Unassigned grader ----------------
 set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
 select pg_temp.expect((select count(*) from module_submissions) = 0, 'unassigned grader sees no submissions');
-select pg_temp.expect((select count(*) from scenarios) = 12, 'grader reads scenario library');
+select pg_temp.expect((select count(*) from scenarios) = 14, 'grader reads scenario library');
 
 reset role;
 insert into cohort_graders values ((select v from ctx where k = 'cohort'), '22222222-2222-2222-2222-222222222222');
@@ -94,7 +95,7 @@ select pg_temp.expect((select count(*) from gradings) = 0, 'facilitator cannot s
 
 -- ---------------- Other facilitator ----------------
 set local request.jwt.claim.sub = '44444444-4444-4444-4444-444444444442';
-select pg_temp.expect(case_brief((select v from ctx where k = 'm1')) is null, 'peer cannot see another case flag');
+select pg_temp.expect(case_brief((select v from ctx where k = 'm1')) is null, 'peer cannot see another facilitator''s observations');
 select pg_temp.expect((select count(*) from module_submissions) = 0, 'peer cannot see other submissions');
 select pg_temp.expect((select count(*) from tags) = 0, 'peer cannot see other tags');
 select pg_temp.expect_error($$select save_response((select v from ctx where k = 'm2'), '{}')$$, 'peer cannot write others');

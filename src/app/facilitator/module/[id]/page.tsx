@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Dashboard, type CoachingFlag, type DashboardData } from "@/components/Dashboard";
+import { Dashboard, ObservationList, type AgentNotes, type DashboardData } from "@/components/Dashboard";
 import { Timer } from "@/components/Timer";
 import { PageHeader } from "@/components/AppShell";
 import { requireRole } from "@/lib/auth";
@@ -28,7 +28,7 @@ export default async function ModulePage({ params }: PageProps<"/facilitator/mod
     const steps =
       s.module === 1
         ? [
-            ["Review your team and choose who to coach", "15 min", "Your team's dashboard, this week's coaching flag and a profile of every agent. Read it all and decide which agent you'll coach first."],
+            ["Review your team and choose who to coach", "15 min", "Your team's dashboard, QA audits and a profile of every agent. Pick any agent to see their observations, then decide who you'll coach first."],
             ["Prepare the session", "10 min", "Coaching cycle stage 1. Your observations, likely root causes, how you'll adapt to the agent and how you'll open. The form locks when you submit or time runs out."],
             ["Coach the agent, live", "20 min", "Coaching cycle stage 2. The certifier plays your agent; it's your first coaching session with them this month. Use the funnel: open, probe, find the root cause, build the plan with them, gain commitment."],
             ["Document the coaching", "10 min", "Coaching cycle stages 3 and 4, straight after the session: Start / Stop / Continue, a SMART action plan and how you'll follow through."],
@@ -66,14 +66,15 @@ export default async function ModulePage({ params }: PageProps<"/facilitator/mod
   }
 
   if (s.module === 1) {
-    const [{ data: dash }, { data: flagData }] = await Promise.all([
+    const [{ data: dash }, { data: scenarioData }] = await Promise.all([
       supabase.from("dashboards").select("data").eq("version", s.dashboard_version).single(),
       supabase.rpc("case_brief", { p_submission: s.id }),
     ]);
     const data = dash?.data as DashboardData | undefined;
-    const flag = (flagData as CoachingFlag | null) ?? null;
+    const notes = ((scenarioData as { agents?: AgentNotes } | null)?.agents ?? null) as AgentNotes | null;
     const agents = data?.profiles?.map((p) => p.name) ?? data?.agentTable.rows.map((r) => String(r[0]).replace(/ \(new hire\)$/, "")) ?? [];
-    const chosen = s.readout.agent || flag?.agent || "your agent";
+    const chosen = s.readout.agent || "your agent";
+    const chosenNote = s.readout.agent ? notes?.[s.readout.agent] : undefined;
     const fmtTime = (iso: string) => new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
 
     if (s.phase === "dashboard") {
@@ -84,7 +85,7 @@ export default async function ModulePage({ params }: PageProps<"/facilitator/mod
             <AdvanceButton id={s.id} label="I've chosen: prepare the session" confirm="Move on to preparing your session? You can't come back to this page until your preparation is submitted." />
           </StepBar>
           <Briefing text={briefing} compact />
-          {data && <Dashboard data={data} flag={flag} storageKey={`tmu-m1-agent-${s.id}`} />}
+          {data && <Dashboard data={data} notes={notes} storageKey={`tmu-m1-agent-${s.id}`} />}
         </div>
       );
     }
@@ -101,7 +102,15 @@ export default async function ModulePage({ params }: PageProps<"/facilitator/mod
               sub="Coaching cycle stage 1: plan, think, review the performance, prepare. Choose the agent you'll coach first and plan the conversation. Your answers save as you type."
             />
             <div className="card">
-              <ResponseForm id={s.id} fields={READOUT_FIELDS} initial={s.readout} agents={agents} prefillKey={`tmu-m1-agent-${s.id}`} submitLabel="Submit preparation" />
+              <ResponseForm
+                id={s.id}
+                fields={READOUT_FIELDS}
+                initial={s.readout}
+                agents={agents}
+                agentNotes={notes ?? undefined}
+                prefillKey={`tmu-m1-agent-${s.id}`}
+                submitLabel="Submit preparation"
+              />
             </div>
           </div>
         </div>
@@ -125,6 +134,14 @@ export default async function ModulePage({ params }: PageProps<"/facilitator/mod
               </div>
             </div>
             <aside className="card h-fit space-y-2 text-sm">
+              {chosenNote && (
+                <details className="mb-3 rounded-chip bg-canvas p-3">
+                  <summary className="cursor-pointer font-bold">Observations: {chosen}</summary>
+                  <div className="mt-2">
+                    <ObservationList agent={chosen} note={chosenNote} />
+                  </div>
+                </details>
+              )}
               <p className="eyebrow">Your preparation</p>
               {READOUT_FIELDS.map((f) => (
                 <div key={f.key}>
@@ -195,7 +212,13 @@ export default async function ModulePage({ params }: PageProps<"/facilitator/mod
             </details>
           )}
         </div>
-        {data && <Dashboard data={data} flag={flag} />}
+        {chosenNote && (
+          <section className="card border-l-4 border-l-brand-magenta">
+            <p className="eyebrow mb-2">Observations: {chosen}</p>
+            <ObservationList agent={chosen} note={chosenNote} />
+          </section>
+        )}
+        {data && <Dashboard data={data} notes={notes} initialAgent={s.readout.agent || undefined} />}
       </div>
     );
   }

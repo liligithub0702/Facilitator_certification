@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { assignCards, assignModule1Cases, assignModule2Recordings, assignSections, type FacilitatorRef, type ScenarioRef } from "@/lib/assignment";
+import { assignCards, assignModule2Recordings, assignSections, module1ScenarioFor, type FacilitatorRef, type ScenarioRef } from "@/lib/assignment";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { REGIONS, type Role } from "@/lib/types";
@@ -126,31 +126,6 @@ export async function autoAssign(cohortId: string) {
     seen.set(f, [...(seen.get(f) ?? []), h.scenario_id as string]);
   }
 
-  // Families already used by other cohorts in the same week, and Case 3 coverage per region.
-  const { data: weekSubs } = await supabase
-    .from("module_submissions")
-    .select("scenario_id, attempts!inner(cohort_id, cohorts!inner(week_start))")
-    .eq("module", 1)
-    .eq("attempts.cohorts.week_start", cohort.week_start)
-    .neq("attempts.cohort_id", cohortId)
-    .not("scenario_id", "is", null);
-  const familiesUsedThisWeek = (weekSubs ?? []).map((w) => byId.get(w.scenario_id as string)?.family).filter(Boolean) as string[];
-
-  const { data: cycleM1 } = await supabase
-    .from("module_submissions")
-    .select("scenario_id, try_no, attempts!inner(cycle, profiles(region))")
-    .eq("module", 1)
-    .eq("try_no", 1)
-    .eq("attempts.cycle", attempts![0].cycle)
-    .not("scenario_id", "is", null);
-  const regionStats: Record<string, { total: number; case3: number }> = {};
-  for (const r of cycleM1 ?? []) {
-    const region = (r.attempts as unknown as { profiles: { region: string | null } }).profiles?.region ?? "Unassigned";
-    const st = (regionStats[region] ??= { total: 0, case3: 0 });
-    st.total += 1;
-    if (byId.get(r.scenario_id as string)?.family === "case-3") st.case3 += 1;
-  }
-
   const attemptById = new Map((attempts ?? []).map((a) => [a.id, a]));
   const refFor = (s: SubRow): FacilitatorRef => {
     const a = attemptById.get(s.attempt_id)!;
@@ -162,20 +137,15 @@ export async function autoAssign(cohortId: string) {
     };
   };
 
-  // Module 1
-  const m1Open = (subs ?? []).filter((s) => s.module === 1 && !s.scenario_id);
-  const m1Taken = (subs ?? []).filter((s) => s.module === 1 && s.scenario_id).map((s) => byId.get(s.scenario_id!)?.family).filter(Boolean) as string[];
-  if (m1Open.length) {
-    const r = assignModule1Cases({
-      facilitators: m1Open.map(refFor),
-      scenarios,
-      familiesUsedThisWeek: [...familiesUsedThisWeek, ...m1Taken],
-      regionStats,
-    });
-    warnings.push(...r.warnings);
-    for (const [subId, scenarioId] of Object.entries(r.assignments)) {
-      await supabase.from("module_submissions").update({ scenario_id: scenarioId, dashboard_version: byId.get(scenarioId)!.version }).eq("id", subId);
+  // Module 1: every agent is a scenario and the facilitator chooses, so there is one scenario
+  // per team version (Team 7 first try, Team 12 reassessment).
+  for (const sub of (subs ?? []).filter((x) => x.module === 1 && !x.scenario_id)) {
+    const pick = module1ScenarioFor(sub.try_no > 1, scenarios);
+    if (!pick) {
+      warnings.push("The Module 1 team scenario is missing; run the latest database update.");
+      break;
     }
+    await supabase.from("module_submissions").update({ scenario_id: pick.id, dashboard_version: pick.version }).eq("id", sub.id);
   }
 
   // Module 2

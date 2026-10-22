@@ -138,7 +138,7 @@ export type RubricItem = { key: string; label: string; levels: [string, string, 
 
 /** Module 1 preparation (the coaching cycle's Preparation stage), scored 0–8. */
 export const PREP_RUBRIC: RubricItem[] = [
-  { key: "choice", label: "Agent choice and rationale", levels: ["No clear reason, or picks on one metric alone", "Reasonable choice, generic reason", "Chooses the flagged agent and justifies it with evidence and impact"] },
+  { key: "choice", label: "Agent choice and rationale", levels: ["No clear reason, or picks on one metric alone", "Reasonable choice, generic reason", "Justifies the choice with evidence and impact: why this agent needs coaching first"] },
   { key: "observations", label: "Observations", levels: ["Restates single numbers", "Notes trends or behaviours", "Links behaviours, trends and dates; includes strengths"] },
   { key: "root_cause", label: "Root-cause hypotheses", levels: ["Blames the agent", "Plausible but untested", "Plausible, to be tested through questions in the session"] },
   { key: "adaptation", label: "Adapting to the agent", levels: ["Ignores the profile", "Mentions the profile generically", "Plans specifically around tenure and learning preference"] },
