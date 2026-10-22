@@ -25,8 +25,8 @@ export async function sendMagicLink(_: LoginState, formData: FormData): Promise<
     options: { shouldCreateUser: true, emailRedirectTo: `${siteUrl()}/auth/callback` },
   });
   if (error) {
-    console.error("signInWithOtp failed", error.code, error.message);
-    return { error: "Could not send the link. Try again shortly." };
+    console.error("signInWithOtp failed", error.code, error.status, error.message);
+    return { error: loginErrorMessage(error.code, error.status, error.message) };
   }
   return { message: "A sign-in link is on its way. Check your inbox (and spam folder)." };
 }
@@ -49,4 +49,27 @@ export async function signInWithMicrosoft() {
   });
   if (error || !data.url) redirect("/login?error=sso");
   redirect(data.url);
+}
+
+/** Plain-language reasons for the failures people actually hit, with the code for support. */
+function loginErrorMessage(code: string | undefined, status: number | undefined, message: string): string {
+  const ref = ` (${code ?? status ?? "unknown"})`;
+  switch (code) {
+    case "over_email_send_rate_limit":
+    case "over_request_rate_limit":
+      return `Too many sign-in emails in a short time. Wait an hour and try again, or ask the admin to set up the email sender (SMTP).${ref}`;
+    case "email_address_not_authorized":
+      return `Emails can't be sent to this address yet: the app's email sender (SMTP) is not set up.${ref}`;
+    case "email_address_invalid":
+      return `That email address was not accepted. Check it for typos.${ref}`;
+    case "signup_disabled":
+    case "otp_disabled":
+      return `New sign-ups are turned off. Ask the certification admin for an invite.${ref}`;
+    case "unexpected_failure":
+      return /saving new user/i.test(message)
+        ? `This email can't be used to sign up. Use your work email, or ask the admin for an invite.${ref}`
+        : `The sign-in service had a problem. Try again shortly.${ref}`;
+  }
+  if (status === 401 || /api key/i.test(message)) return `The app is not connected to Supabase correctly (check the keys in Vercel).${ref}`;
+  return `Could not send the link: ${message}${ref}`;
 }
