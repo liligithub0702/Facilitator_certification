@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/AppShell";
 import { requireRole } from "@/lib/auth";
 import { REGIONS, type Profile } from "@/lib/types";
 import { createUserAccount, resetPassword, updateUser } from "../actions";
@@ -11,7 +12,7 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
 
   return (
     <div className="space-y-6">
-      <h1 className="h1">Users</h1>
+      <PageHeader eyebrow="Admin" title="Users" sub="Everyone who can sign in, and their role." />
       {typeof created === "string" && (
         <p className="text-sm text-ok">Account created for {created}. Give them their email and starting password.</p>
       )}

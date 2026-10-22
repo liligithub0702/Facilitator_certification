@@ -1,6 +1,8 @@
 import { requireRole } from "@/lib/auth";
 import type { Dimension } from "@/lib/types";
-import { saveDimension, saveSignupDomains, saveTimers } from "../actions";
+import { PageHeader } from "@/components/AppShell";
+import { getContext } from "@/lib/context";
+import { saveContext, saveDimension, saveSignupDomains, saveTimers } from "../actions";
 
 export default async function SettingsPage() {
   const { supabase } = await requireRole("admin");
@@ -12,10 +14,34 @@ export default async function SettingsPage() {
   ]);
   const domains = ((signupRow?.value as { allowed_domains?: string[] })?.allowed_domains ?? []).join(", ");
   const t = (timersRow?.value ?? {}) as Record<string, number>;
+  const context = await getContext(supabase);
 
   return (
     <div className="space-y-6">
-      <h1 className="h1">Settings</h1>
+      <PageHeader eyebrow="Admin" title="Settings" sub="What facilitators read, who can sign up, timers and scorecard levels." />
+
+      <form action={saveContext} className="card space-y-4">
+        <div>
+          <h2 className="h2">What facilitators read</h2>
+          <p className="muted">Leave a blank line between paragraphs. Clear a box to go back to the default text.</p>
+        </div>
+        <label className="block">
+          <span className="label">About the programme (facilitator home page)</span>
+          <textarea name="programme" defaultValue={context.programme} className="input min-h-40" />
+        </label>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <label className="block">
+            <span className="label">Your situation: Team 7 (Version A, voice)</span>
+            <textarea name="briefing_A" defaultValue={context.briefing_A} className="input min-h-56" />
+          </label>
+          <label className="block">
+            <span className="label">Your situation: Team 12 (Version B, chat, for reassessments)</span>
+            <textarea name="briefing_B" defaultValue={context.briefing_B} className="input min-h-56" />
+          </label>
+        </div>
+        <p className="muted">Shown before Module 1 starts and above the dashboard. Don&apos;t reveal the case: Alex&apos;s situation must stay unknown until the live session.</p>
+        <button className="btn btn-primary">Save text</button>
+      </form>
 
       <form action={saveSignupDomains} className="card space-y-3">
         <h2 className="h2">Who can sign up</h2>

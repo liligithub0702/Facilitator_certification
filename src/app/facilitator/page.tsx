@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { StatusBadge } from "@/components/AppShell";
+import { PageHeader, StatusBadge } from "@/components/AppShell";
 import { requireRole } from "@/lib/auth";
+import { getContext, paragraphs } from "@/lib/context";
 import { MODULE_NAMES, OUTCOME_LABELS, type ModuleNo } from "@/lib/rules";
 import type { Attempt, Cohort, OutcomeRow, Submission } from "@/lib/types";
 import { acceptConsent } from "./actions";
@@ -29,11 +30,14 @@ export default async function FacilitatorHome() {
     .returns<(Attempt & { cohorts: Cohort })[]>();
   const attempt = attempts?.[0];
 
+  const context = await getContext(supabase);
+  const firstName = (profile.full_name ?? "").split(" ")[0] || null;
+
   if (!attempt) {
     return (
-      <div className="card">
-        <h1 className="h1">Welcome, {profile.full_name ?? profile.email}</h1>
-        <p className="muted mt-2">You have not been added to a certification cohort yet.</p>
+      <div className="space-y-6">
+        <PageHeader eyebrow="TMU facilitator re-certification" title={`Welcome${firstName ? `, ${firstName}` : ""}`} sub="You have not been added to a certification cohort yet. Your admin will add you; this page will then show your modules." />
+        <ProgrammeCard text={context.programme} />
       </div>
     );
   }
@@ -53,20 +57,26 @@ export default async function FacilitatorHome() {
   const m1Passed = latest.get(1)?.result === "passed";
   const sectionTitle = (id: string | null) => sections?.find((s) => s.id === id)?.title;
 
+  const m1 = latest.get(1);
+  const m2 = latest.get(2);
+  const next = nextStep({ consented: Boolean(attempt.consent_at), m1, m2, m1Passed, fmt });
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="h1">My certification</h1>
-        <p className="muted">{attempt.cohorts.name} · week of {attempt.cohorts.week_start} · {attempt.cycle}</p>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow={`${attempt.cohorts.name} · week of ${attempt.cohorts.week_start}`}
+        title={`Welcome${firstName ? `, ${firstName}` : ""}`}
+        sub="Three modules, in order. Module 2 opens once Module 1 is passed; Module 3 is a live teach-back with your cohort."
+      />
 
       {outcome && outcome.outcome !== "in_progress" && (
-        <section className="card space-y-2">
-          <h2 className="h2">Outcome: {OUTCOME_LABELS[outcome.outcome]}</h2>
+        <section className="card space-y-2 border-l-4 border-l-brand-magenta">
+          <p className="eyebrow">Your outcome</p>
+          <h2 className="text-2xl font-extrabold">{OUTCOME_LABELS[outcome.outcome]}</h2>
           {outcome.feedback && <p className="whitespace-pre-wrap text-sm">{outcome.feedback}</p>}
           {outcome.development_plan && (
             <div>
-              <h3 className="font-medium">Development plan</h3>
+              <h3 className="font-bold">Development plan</h3>
               <p className="whitespace-pre-wrap text-sm">{outcome.development_plan}</p>
             </div>
           )}
@@ -74,16 +84,33 @@ export default async function FacilitatorHome() {
         </section>
       )}
 
+      {next && attempt.consent_at && (
+        <section className="relative overflow-hidden rounded-panel bg-[linear-gradient(135deg,var(--color-brand-indigo-soft),var(--color-brand-indigo)_45%,var(--color-brand-indigo-deep))] p-7 text-white shadow-mid">
+          <div className="pointer-events-none absolute -top-24 -right-16 size-72 rounded-full bg-brand-magenta/35 blur-3xl" />
+          <p className="text-xs font-bold tracking-[0.14em] text-white/70 uppercase">Your next step</p>
+          <h2 className="mt-2 text-2xl font-extrabold">{next.title}</h2>
+          <p className="mt-1 max-w-2xl text-white/80">{next.body}</p>
+          {next.href && (
+            <Link href={next.href} className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-bold text-brand-indigo shadow-soft transition hover:-translate-y-px hover:shadow-mid">
+              {next.cta} →
+            </Link>
+          )}
+        </section>
+      )}
+
       {!attempt.consent_at ? (
-        <section className="card space-y-3">
-          <h2 className="h2">Before you start</h2>
-          <ul className="list-disc space-y-1 pl-5 text-sm">
-            <li>Block 60 minutes for Module 1 and 45 minutes for Module 2, in a quiet room with camera and headset.</li>
-            <li>Do not prepare with other facilitators or share case details afterwards. Cases rotate, and shared details count as a breach of the assessment.</li>
-            <li>Use no notes, AI tools or materials other than those shown in the app.</li>
+        <section className="card space-y-4 border-l-4 border-l-brand-magenta">
+          <div>
+            <p className="eyebrow">Step 0</p>
+            <h2 className="h2">Before you start</h2>
+          </div>
+          <ul className="space-y-2 text-sm">
+            <li className="flex gap-2"><span className="text-brand-magenta">●</span>Block 60 minutes for Module 1 and 45 minutes for Module 2, in a quiet room with camera and headset.</li>
+            <li className="flex gap-2"><span className="text-brand-magenta">●</span>Do not prepare with other facilitators or share case details afterwards. Cases rotate, and shared details count as a breach of the assessment.</li>
+            <li className="flex gap-2"><span className="text-brand-magenta">●</span>Use no notes, AI tools or materials other than those shown in the app.</li>
           </ul>
-          <div className="rounded-md border border-border p-3 text-sm">
-            <p className="font-medium">Recording consent</p>
+          <div className="rounded-card bg-canvas p-4 text-sm">
+            <p className="font-bold">Recording consent</p>
             <p className="mt-1">
               I agree that my Module 1 coaching session, Module 3 teach-back and my written responses are recorded and
               stored for assessment. Recordings are visible only to me, my assigned grader and the certification admin,
@@ -96,42 +123,69 @@ export default async function FacilitatorHome() {
           </form>
         </section>
       ) : (
-        <p className="muted">Recording consent accepted {fmt(attempt.consent_at)}.</p>
+        <p className="muted">✓ Recording consent accepted {fmt(attempt.consent_at)}.</p>
       )}
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {([1, 2, 3] as ModuleNo[]).map((m) => {
-          const s = latest.get(m);
-          const locked = !attempt.consent_at || (m === 2 && !m1Passed);
-          return (
-            <section key={m} className="card flex flex-col gap-2">
-              <div className="flex items-start justify-between gap-2">
-                <h2 className="font-semibold">Module {m}: {MODULE_NAMES[m]}</h2>
-                <StatusBadge value={s?.result ?? s?.status ?? "not assigned"} />
-              </div>
-              {s && s.try_no > 1 && <p className="muted">Reassessment (try {s.try_no})</p>}
-              {m === 1 && <p className="muted">Dashboard review 15 min · readout 5 min · live coaching 20 min</p>}
-              {m === 2 && <p className="muted">10 min recording · 25 min debrief. Opens after Module 1 is passed.</p>}
-              {m === 3 && s && (
-                <div className="text-sm">
-                  <p>Section: <strong>{sectionTitle(s.section_id) ?? "to be assigned"}</strong></p>
-                  <p>Teach-back: {fmt(s.session_at ?? attempt.cohorts.teach_back_at) ?? "date to be confirmed"}</p>
-                  <p className="muted mt-1">Deliver it as you would to Team Managers, including a practice activity of at least 5 minutes.</p>
+      <section>
+        <h2 className="h2 mb-3">Your modules</h2>
+        <ol className="grid gap-4 md:grid-cols-3">
+          {([1, 2, 3] as ModuleNo[]).map((m) => {
+            const s = latest.get(m);
+            const locked = !attempt.consent_at || (m === 2 && !m1Passed);
+            const done = s?.result === "passed";
+            return (
+              <li key={m} className={`card flex flex-col gap-3 ${locked ? "opacity-70" : "card-lift"}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className={`grid size-9 place-items-center rounded-full text-sm font-extrabold ${
+                      done ? "bg-ok text-white" : locked ? "bg-canvas-2 text-brand-gray" : "bg-brand-indigo text-white"
+                    }`}
+                  >
+                    {done ? "✓" : m}
+                  </span>
+                  <StatusBadge value={s?.result ?? s?.status ?? "not assigned"} />
                 </div>
-              )}
-              {m === 1 && s?.session_at && <p className="text-sm">Coaching session: {fmt(s.session_at)}</p>}
-              <div className="mt-auto pt-2">
-                {m !== 3 && s && !locked && (
-                  <Link className="btn btn-primary" href={`/facilitator/module/${s.id}`}>
-                    {s.status === "assigned" ? "Open" : "Continue"}
-                  </Link>
+                <div>
+                  <p className="eyebrow">Module {m}</p>
+                  <h3 className="text-lg font-extrabold">{MODULE_NAMES[m]}</h3>
+                </div>
+                {s && s.try_no > 1 && <p className="badge self-start border-warn/30 bg-warn-bg text-warn">Reassessment · try {s.try_no}</p>}
+                {m === 1 && (
+                  <p className="text-sm text-ink-soft">Read a team&apos;s dashboard, write a short readout, then coach the Team Manager live.</p>
                 )}
-                {m !== 3 && locked && <span className="muted">Locked</span>}
-              </div>
-            </section>
-          );
-        })}
-      </div>
+                {m === 2 && (
+                  <p className="text-sm text-ink-soft">Watch a recorded TM conversation, tag key moments and write a structured debrief.</p>
+                )}
+                {m === 3 && (
+                  <p className="text-sm text-ink-soft">Deliver a TMU section to your cohort peers, including a practice activity of at least 5 minutes.</p>
+                )}
+                <div className="flex flex-wrap gap-1.5">
+                  {(m === 1 ? ["15 min review", "5 min readout", "20 min coaching"] : m === 2 ? ["10 min video", "25 min debrief"] : ["15–20 min live"]).map((t) => (
+                    <span key={t} className="badge">{t}</span>
+                  ))}
+                </div>
+                {m === 3 && s && (
+                  <div className="rounded-chip bg-canvas p-3 text-sm">
+                    <p>Section: <strong>{sectionTitle(s.section_id) ?? "to be assigned"}</strong></p>
+                    <p>Teach-back: {fmt(s.session_at ?? attempt.cohorts.teach_back_at) ?? "date to be confirmed"}</p>
+                  </div>
+                )}
+                {m === 1 && s?.session_at && <p className="rounded-chip bg-canvas p-3 text-sm">Coaching session: <strong>{fmt(s.session_at)}</strong></p>}
+                <div className="mt-auto pt-1">
+                  {m !== 3 && s && !locked && (
+                    <Link className="btn btn-primary" href={`/facilitator/module/${s.id}`}>
+                      {s.status === "assigned" ? "Open" : "Continue"}
+                    </Link>
+                  )}
+                  {m !== 3 && locked && <span className="muted">🔒 Locked{m === 2 && attempt.consent_at ? " until Module 1 is passed" : ""}</span>}
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+
+      <ProgrammeCard text={context.programme} />
 
       {(myCards?.length ?? 0) > 0 && (
         <section className="card space-y-3">
@@ -139,7 +193,7 @@ export default async function FacilitatorHome() {
           <p className="muted">When you play a learner, follow your own card only and do not share it.</p>
           <ul className="space-y-2">
             {myCards!.map((c) => (
-              <li key={c.assignment_id} className="rounded-md border border-border p-3 text-sm">
+              <li key={c.assignment_id} className="rounded-card border border-line bg-canvas p-4 text-sm">
                 <p className="font-medium">
                   {c.card_name} <span className="badge ml-1">during {c.plays_during}</span>
                 </p>
@@ -152,4 +206,66 @@ export default async function FacilitatorHome() {
       )}
     </div>
   );
+}
+
+function ProgrammeCard({ text }: { text: string }) {
+  return (
+    <section className="card grid gap-4 md:grid-cols-[200px_1fr]">
+      <div>
+        <p className="eyebrow">About the programme</p>
+        <h2 className="h2 mt-1">TMU and this certification</h2>
+      </div>
+      <div className="prose-sm space-y-2 text-[15px] leading-relaxed text-ink-soft">
+        {paragraphs(text).map((p, i) => (
+          <p key={i}>{p}</p>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function nextStep({
+  consented,
+  m1,
+  m2,
+  m1Passed,
+  fmt,
+}: {
+  consented: boolean;
+  m1?: Submission;
+  m2?: Submission;
+  m1Passed: boolean;
+  fmt: (iso: string | null) => string | null;
+}): { title: string; body: string; cta?: string; href?: string } | null {
+  if (!consented) return null;
+  if (m1 && (m1.status === "assigned" || m1.status === "in_progress") && m1.phase !== "coaching") {
+    return {
+      title: m1.status === "assigned" ? "Start Module 1: Capability Demonstration" : "Continue Module 1",
+      body: "You'll read the team's dashboard (15 min), write a short readout (5 min), then coach the Team Manager live. The timer starts when you open the dashboard.",
+      cta: m1.status === "assigned" ? "Start Module 1" : "Continue Module 1",
+      href: `/facilitator/module/${m1.id}`,
+    };
+  }
+  if (m1 && !m1Passed && m1.result !== "not_passed") {
+    return {
+      title: "Next: your live coaching session",
+      body: m1.session_at
+        ? `Your readout is in. Join the coaching session with Alex on ${fmt(m1.session_at)}. Your result appears here after grading.`
+        : "Your readout is in. Your certifier will schedule the live coaching session with Alex; the time will appear here.",
+      cta: "Review the dashboard",
+      href: `/facilitator/module/${m1.id}`,
+    };
+  }
+  if (m1Passed && m2 && m2.status !== "submitted" && m2.status !== "graded") {
+    return {
+      title: m2.status === "assigned" ? "Start Module 2: Observation & Diagnosis" : "Continue Module 2",
+      body: "Watch a recorded conversation (one replay allowed), tag key moments, then write a 25-minute debrief.",
+      cta: m2.status === "assigned" ? "Start Module 2" : "Continue Module 2",
+      href: `/facilitator/module/${m2.id}`,
+    };
+  }
+  if (m2 && (m2.status === "submitted" || m2.status === "graded") && !m2.result) {
+    return { title: "Your debrief is with the grader", body: "Next is Module 3, the live teach-back with your cohort. Your section and date are shown below." };
+  }
+  return null;
 }

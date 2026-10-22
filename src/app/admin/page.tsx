@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/AppShell";
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { REGIONS } from "@/lib/types";
@@ -12,7 +13,7 @@ export default async function AdminHome() {
 
   return (
     <div className="space-y-6">
-      <h1 className="h1">Cohorts</h1>
+      <PageHeader eyebrow="Admin" title="Cohorts" sub="Groups of 3–4 facilitators who take the modules in the same week." />
       <div className="card overflow-x-auto p-0">
         <table className="table">
           <thead><tr><th>Cohort</th><th>Region</th><th>Week of</th><th>Facilitators</th><th>Graders</th></tr></thead>

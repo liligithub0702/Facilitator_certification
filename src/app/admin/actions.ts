@@ -306,6 +306,18 @@ export async function saveTimers(formData: FormData) {
   revalidatePath("/admin/settings");
 }
 
+export async function saveContext(formData: FormData) {
+  const { supabase } = await requireRole("admin");
+  const field = (k: string) => String(formData.get(k) ?? "").replace(/\r\n/g, "\n").trim().slice(0, 8000);
+  await supabase.from("settings").upsert({
+    key: "context",
+    value: { programme: field("programme"), briefing_A: field("briefing_A"), briefing_B: field("briefing_B") },
+    updated_at: new Date().toISOString(),
+  });
+  revalidatePath("/admin/settings");
+  revalidatePath("/facilitator");
+}
+
 export async function saveSignupDomains(formData: FormData) {
   const { supabase } = await requireRole("admin");
   const allowed = str(formData, "allowed_domains")

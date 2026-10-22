@@ -32,11 +32,11 @@ export function Timer({ deadline, serverNow, label }: { deadline: string; server
   const ss = String(s % 60).padStart(2, "0");
   return (
     <div
-      className={`sticky top-2 z-10 inline-flex items-center gap-2 rounded-md border bg-surface px-3 py-1.5 font-mono text-sm ${s <= 60 ? "border-danger text-danger" : "border-border"}`}
+      className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-bold tabular-nums ${s <= 60 ? "border-danger bg-danger-bg text-danger" : "border-line-strong bg-paper text-ink"}`}
       role="timer"
       aria-live={s <= 60 ? "polite" : "off"}
     >
-      <span className="font-sans text-muted">{label}</span> {mm}:{ss}
+      <span className="font-semibold text-brand-gray">{label}</span> {mm}:{ss}
     </div>
   );
 }

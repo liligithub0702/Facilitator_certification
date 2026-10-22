@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/AppShell";
 import { requireRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { AnswerKeyItem, Scenario } from "@/lib/types";
@@ -21,7 +22,7 @@ export default async function ScenarioLibrary() {
 
   return (
     <div className="space-y-6">
-      <h1 className="h1">Scenario library</h1>
+      <PageHeader eyebrow="Admin" title="Scenario library" />
       <p className="muted">
         Grader-only content. Edit wording in the Supabase table editor (tables <code>scenarios</code>, <code>answer_key_items</code>,{" "}
         <code>sections</code>, <code>learner_cards</code>) or via a new migration so changes are versioned.

@@ -1,71 +1,145 @@
 @import "tailwindcss";
 
-:root {
-  --background: #f7f7f5;
-  --surface: #ffffff;
-  --foreground: #1c1c1a;
-  --muted: #6b6b66;
-  --border: #e3e3de;
-  --accent: #1f5f8b;
-  --accent-fg: #ffffff;
-  --danger: #b42318;
-  --ok: #1a7f4b;
-  --warn: #a15c07;
+/* ============================================================
+   Look and feel ported from DesignX (liligithub0702/DesignX_New,
+   apps/web/src/app/globals.css): Hanken Grotesk, the indigo /
+   magenta brand palette, soft canvas, 16px cards, pill buttons.
+   ============================================================ */
+@font-face {
+  font-family: "Hanken Grotesk";
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("/fonts/HankenGrotesk-latin-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Hanken Grotesk";
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("/fonts/HankenGrotesk-latin-ext-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+    U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Hanken Grotesk";
+  font-style: italic;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("/fonts/HankenGrotesk-latin-italic.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #141413;
-    --surface: #1d1d1b;
-    --foreground: #ededea;
-    --muted: #a3a39d;
-    --border: #33332f;
-    --accent: #5fa8d8;
-    --accent-fg: #0b1620;
-    --danger: #f97066;
-    --ok: #47cd89;
-    --warn: #fdb022;
-  }
-}
+@theme {
+  /* DesignX brand palette */
+  --color-brand-indigo: #26235d;
+  --color-brand-indigo-deep: #1a1842;
+  --color-brand-indigo-soft: #2c2870;
+  --color-brand-magenta: #de1b54;
+  --color-brand-magenta-deep: #b3133f;
+  --color-brand-blue: #2e79bb;
+  --color-brand-orange: #f99f42;
+  --color-brand-green: #6cc049;
+  --color-brand-slate: #2c3546;
+  --color-brand-gray: #6e797c;
+  --color-brandmark-mid: #7b2fa8;
+  --color-brandmark-end: #3b379a;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-surface: var(--surface);
-  --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
-  --color-border: var(--border);
-  --color-accent: var(--accent);
-  --color-accent-fg: var(--accent-fg);
-  --color-danger: var(--danger);
-  --color-ok: var(--ok);
-  --color-warn: var(--warn);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Surfaces and text */
+  --color-ink: #1d2230;
+  --color-ink-soft: #4a5161;
+  --color-paper: #ffffff;
+  --color-canvas: #f4f5f8;
+  --color-canvas-2: #eceef3;
+  --color-line: #e2e5ec;
+  --color-line-strong: #cfd3dd;
+
+  /* Status */
+  --color-ok: #1f9d57;
+  --color-ok-bg: #e8f7ee;
+  --color-danger: #d63452;
+  --color-danger-bg: #fdebef;
+  --color-warn: #b8650a;
+  --color-warn-bg: #fff4e5;
+
+  /* Aliases used across the app */
+  --color-background: var(--color-canvas);
+  --color-surface: var(--color-paper);
+  --color-foreground: var(--color-ink);
+  --color-muted: var(--color-brand-gray);
+  --color-border: var(--color-line);
+  --color-accent: var(--color-brand-indigo);
+  --color-accent-fg: #ffffff;
+
+  --radius-chip: 10px;
+  --radius-card: 16px;
+  --radius-panel: 24px;
+  --shadow-soft: 0 1px 2px rgb(28 34 48 / 0.06), 0 2px 8px rgb(28 34 48 / 0.05);
+  --shadow-mid: 0 4px 14px rgb(28 34 48 / 0.08), 0 10px 34px rgb(28 34 48 / 0.07);
+  --shadow-deep: 0 18px 50px rgb(26 24 66 / 0.18);
+
+  --font-sans: "Hanken Grotesk", "Arial", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
 }
 
 @layer components {
-  .card { @apply rounded-lg border border-border bg-surface p-5; }
-  .btn { @apply inline-flex items-center justify-center gap-2 rounded-md border border-border bg-surface px-3 py-1.5 text-sm font-medium hover:bg-background disabled:cursor-not-allowed disabled:opacity-50; }
-  .btn-primary { @apply border-accent bg-accent text-accent-fg hover:bg-accent hover:opacity-90; }
-  .btn-danger { @apply border-danger text-danger; }
-  .input { @apply w-full rounded-md border border-border bg-surface px-3 py-1.5 text-sm outline-none focus:border-accent; }
-  .label { @apply mb-1 block text-sm font-medium; }
-  .badge { @apply inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs font-medium whitespace-nowrap; }
+  .card { @apply rounded-card border border-line bg-paper p-6 shadow-soft; }
+  .card-lift { @apply transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-mid; }
+
+  .btn {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-line-strong bg-paper px-4 py-2
+      text-sm font-bold text-ink-soft transition-all duration-150
+      hover:border-brand-indigo hover:text-brand-indigo
+      disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply border-brand-indigo bg-brand-indigo text-white shadow-soft
+      hover:-translate-y-px hover:border-brand-indigo-soft hover:bg-brand-indigo-soft hover:text-white hover:shadow-mid;
+  }
+  .btn-accent {
+    @apply border-brand-magenta bg-brand-magenta text-white shadow-soft
+      hover:-translate-y-px hover:border-brand-magenta-deep hover:bg-brand-magenta-deep hover:text-white hover:shadow-mid;
+  }
+  .btn-danger { @apply border-danger text-danger hover:border-danger hover:text-danger; }
+
+  .input {
+    @apply w-full rounded-chip border border-line-strong bg-paper px-3 py-2 text-sm text-ink outline-none transition
+      focus:border-brand-indigo focus:ring-3 focus:ring-brand-indigo/15;
+  }
+  .label { @apply mb-1.5 block text-sm font-semibold text-ink; }
+  .badge {
+    @apply inline-flex items-center rounded-full border border-line-strong bg-paper px-2.5 py-0.5 text-xs font-semibold
+      whitespace-nowrap text-ink-soft;
+  }
+
   .table { @apply w-full border-collapse text-sm; }
-  .table th { @apply border-b border-border px-2 py-1.5 text-left font-medium text-muted; }
-  .table td { @apply border-b border-border px-2 py-1.5 align-top; }
-  .h1 { @apply text-2xl font-semibold tracking-tight; }
-  .h2 { @apply text-lg font-semibold; }
-  .muted { @apply text-sm text-muted; }
+  .table th {
+    @apply border-b border-line bg-canvas px-3 py-2 text-left text-xs font-bold tracking-wide text-brand-gray uppercase;
+  }
+  .table td { @apply border-b border-line px-3 py-2 align-top; }
+  .table tbody tr:hover td { @apply bg-canvas/60; }
+
+  .eyebrow { @apply text-xs font-bold tracking-[0.14em] text-brand-magenta uppercase; }
+  .h1 { @apply text-[clamp(26px,4vw,36px)] leading-tight font-extrabold tracking-tight text-ink; }
+  .h2 { @apply text-lg font-bold text-ink; }
+  .muted { @apply text-sm text-brand-gray; }
+  .prose-sm p + p { @apply mt-2; }
 }
 
 @media print {
   .no-print { display: none !important; }
   body { background: white; color: black; }
-  .card { border-color: #ccc; break-inside: avoid; }
+  .card { border-color: #ccc; box-shadow: none; break-inside: avoid; }
 }

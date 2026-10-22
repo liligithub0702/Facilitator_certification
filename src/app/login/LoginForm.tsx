@@ -12,7 +12,7 @@ export function LoginForm() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-1 rounded-md border border-border p-1 text-sm" role="tablist">
+      <div className="grid grid-cols-2 gap-1 rounded-full bg-canvas p-1 text-sm" role="tablist">
         {(["in", "up"] as const).map((m) => (
           <button
             key={m}
@@ -20,7 +20,7 @@ export function LoginForm() {
             role="tab"
             aria-selected={mode === m}
             onClick={() => setMode(m)}
-            className={`rounded px-2 py-1 ${mode === m ? "bg-accent text-accent-fg" : "text-muted"}`}
+            className={`rounded-full px-2 py-1.5 font-semibold transition ${mode === m ? "bg-brand-indigo text-white shadow-soft" : "text-brand-gray hover:text-ink"}`}
           >
             {m === "in" ? "Sign in" : "Create account"}
           </button>
@@ -54,7 +54,7 @@ export function LoginForm() {
         <button className="btn btn-primary w-full" disabled={pending}>
           {pending ? "Please wait…" : mode === "in" ? "Sign in" : "Create account"}
         </button>
-        {state.error && <p className="text-sm text-danger">{state.error}</p>}
+        {state.error && <p className="rounded-chip bg-danger-bg px-3 py-2 text-sm text-danger">{state.error}</p>}
         {mode === "in" && <p className="muted">Forgot your password? Ask the certification admin to reset it.</p>}
       </form>
     </div>

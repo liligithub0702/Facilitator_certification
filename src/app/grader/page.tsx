@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { StatusBadge } from "@/components/AppShell";
+import { PageHeader, StatusBadge } from "@/components/AppShell";
 import { requireRole } from "@/lib/auth";
 import { MODULE_NAMES, type ModuleNo } from "@/lib/rules";
 
@@ -60,7 +60,7 @@ export default async function GraderQueue({ searchParams }: PageProps<"/grader">
 
   return (
     <div className="space-y-4">
-      <h1 className="h1">Grading queue</h1>
+      <PageHeader eyebrow="Grading" title="Grading queue" sub="Submissions from the cohorts you are assigned to. Grade each module, then set the outcome." />
       <form className="flex flex-wrap items-end gap-3 text-sm">
         <label>Module
           <select name="module" defaultValue={moduleFilter ?? ""} className="input mt-1">

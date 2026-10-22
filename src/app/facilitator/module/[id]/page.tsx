@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Dashboard, type DashboardData } from "@/components/Dashboard";
 import { Timer } from "@/components/Timer";
+import { PageHeader } from "@/components/AppShell";
 import { requireRole } from "@/lib/auth";
+import { getContext, paragraphs } from "@/lib/context";
 import { serverTime } from "@/lib/env";
 import { DEBRIEF_FIELDS, READOUT_FIELDS, type Submission, type Tag } from "@/lib/types";
 import { getVideoUrl } from "../../actions";
@@ -18,28 +20,46 @@ export default async function ModulePage({ params }: PageProps<"/facilitator/mod
   if (error || !s || s.module === 3) notFound();
   const serverNow = serverTime();
 
-  const back = <Link href="/facilitator" className="muted hover:underline">← My certification</Link>;
+  const back = <Link href="/facilitator" className="muted font-semibold hover:text-brand-indigo">← My certification</Link>;
+  const context = await getContext(supabase);
+  const briefing = s.dashboard_version === "B" ? context.briefing_B : context.briefing_A;
 
   if (s.status === "assigned") {
+    const steps =
+      s.module === 1
+        ? [
+            ["Review the dashboard", "15 min", "The team's performance dashboard opens with a timer. Read all of it: you won't know in advance which situation the Team Manager brings."],
+            ["Write your readout", "5 min", "Three observations, one hypothesis and two questions you would ask the Team Manager. The form locks when you submit or time runs out."],
+            ["Coach the Team Manager", "20 min, live", "The certifier plays Alex. Help Alex think it through and reach their own plan. The dashboard stays open for reference."],
+            ["Expect the situation to change", "", "Alex may push back, ask for the answer or share new information. Respond as you would on the floor."],
+          ]
+        : [
+            ["Watch the recording", "10 min", "A Team Manager in a coaching conversation or a hiring interview. You can pause, and replay once."],
+            ["Tag moments as you watch", "", "Press Tag and add a short note; the timestamp is saved with it."],
+            ["Write the debrief", "25 min", "Link each point to a timestamp where you can. Specific, behaviour-based points score higher than general impressions."],
+          ];
     return (
-      <div className="max-w-2xl space-y-4">
+      <div className="max-w-3xl space-y-6">
         {back}
-        <h1 className="h1">Module {s.module}: {s.module === 1 ? "Capability Demonstration" : "Observation & Diagnosis"}</h1>
-        {s.module === 1 ? (
-          <div className="card space-y-2 text-sm">
-            <p><strong>1. Review the dashboard (15 min).</strong> The team&apos;s performance dashboard opens with a timer. Read all of it; you will not know in advance which situation the Team Manager brings.</p>
-            <p><strong>2. Write your readout (5 min).</strong> Three observations, one hypothesis and two questions you would ask the Team Manager. The form locks when you submit or when time runs out.</p>
-            <p><strong>3. Coach the Team Manager (20 min).</strong> Live with the certifier, who plays Alex. Help Alex think it through and reach their own plan. The dashboard stays open for reference.</p>
-            <p><strong>4. Expect the situation to change.</strong> Respond as you would on the floor.</p>
-            <p className="muted">The timer runs on the server and keeps running if you close this tab.</p>
-          </div>
-        ) : (
-          <div className="card space-y-2 text-sm">
-            <p><strong>1. Watch the recording (10 min).</strong> A Team Manager in a coaching conversation or a hiring interview. You can pause and replay once.</p>
-            <p><strong>2. Tag moments as you watch.</strong> Press Tag and add a short note; the timestamp is saved with it.</p>
-            <p><strong>3. Complete the debrief (25 min).</strong> Link each point to a timestamp where you can. Specific, behaviour-based points score higher than general impressions.</p>
-          </div>
-        )}
+        <PageHeader
+          eyebrow={`Module ${s.module}`}
+          title={s.module === 1 ? "Capability Demonstration" : "Observation & Diagnosis"}
+          sub={s.module === 1 ? "About 45 minutes. The timer runs on the server and keeps running if you close this tab." : "About 35 minutes. Find a quiet place with headphones."}
+        />
+        {s.module === 1 && <Briefing text={briefing} />}
+        <ol className="space-y-3">
+          {steps.map(([title, time, body], i) => (
+            <li key={title} className="card flex gap-4 p-5">
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-indigo text-sm font-extrabold text-white">{i + 1}</span>
+              <div>
+                <p className="font-bold">
+                  {title} {time && <span className="badge ml-1 align-middle">{time}</span>}
+                </p>
+                <p className="mt-1 text-sm text-ink-soft">{body}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
         <StartButton id={s.id} label={s.module === 1 ? "Open the dashboard and start the timer" : "Start Module 2"} />
       </div>
     );
@@ -51,30 +71,42 @@ export default async function ModulePage({ params }: PageProps<"/facilitator/mod
 
     if (s.phase === "dashboard") {
       return (
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <Timer deadline={s.phase_deadline!} serverNow={serverNow} label="Dashboard review" />
+        <div className="space-y-5">
+          <StepBar current={0}>
+            <Timer deadline={s.phase_deadline!} serverNow={serverNow} label="Time left" />
             <AdvanceButton id={s.id} label="I'm ready: go to the readout" confirm="Move to the readout? You cannot come back to the dashboard until the readout is submitted." />
-          </div>
+          </StepBar>
+          <Briefing text={briefing} compact />
           {data && <Dashboard data={data} />}
         </div>
       );
     }
     if (s.phase === "readout") {
       return (
-        <div className="max-w-3xl space-y-4">
-          <Timer deadline={s.phase_deadline!} serverNow={serverNow} label="Readout" />
-          <h1 className="h1">Your readout</h1>
-          <p className="muted">Three observations, one hypothesis and two questions you would ask the Team Manager.</p>
-          <ResponseForm id={s.id} fields={READOUT_FIELDS} initial={s.readout} submitLabel="Submit readout" />
+        <div className="space-y-5">
+          <StepBar current={1}>
+            <Timer deadline={s.phase_deadline!} serverNow={serverNow} label="Time left" />
+          </StepBar>
+          <div className="mx-auto max-w-3xl space-y-4">
+            <PageHeader
+              eyebrow="Module 1 · Step 2"
+              title="Your readout"
+              sub="Three observations, one hypothesis and two questions you would ask Alex. Link what you saw to when it happened. Your answers save as you type."
+            />
+            <div className="card">
+              <ResponseForm id={s.id} fields={READOUT_FIELDS} initial={s.readout} submitLabel="Submit readout" />
+            </div>
+          </div>
         </div>
       );
     }
     const { data: recordings } = await supabase.from("recordings").select("id, url, label").eq("submission_id", s.id);
     return (
-      <div className="space-y-6">
+      <div className="space-y-5">
         {back}
+        <StepBar current={2} />
         <div className="card space-y-2">
+          <p className="eyebrow">Module 1 · Step 3</p>
           <h1 className="h2">Readout submitted</h1>
           <p className="text-sm">
             Next: the live coaching conversation with Alex
@@ -137,5 +169,58 @@ export default async function ModulePage({ params }: PageProps<"/facilitator/mod
         debrief={s.phase === "debrief" ? { fields: DEBRIEF_FIELDS, initial: s.debrief } : undefined}
       />
     </div>
+  );
+}
+
+const M1_STEPS = ["Review the dashboard", "Write your readout", "Coach Alex (live)"];
+
+/** Sticky progress bar for Module 1: where you are, plus the timer and actions. */
+function StepBar({ current, children }: { current: number; children?: React.ReactNode }) {
+  return (
+    <div className="sticky top-[68px] z-10 flex flex-wrap items-center justify-between gap-3 rounded-card border border-line bg-paper/95 px-4 py-3 shadow-soft backdrop-blur">
+      <ol className="flex flex-wrap items-center gap-2 text-sm">
+        {M1_STEPS.map((label, i) => (
+          <li key={label} className="flex items-center gap-2">
+            <span
+              className={`grid size-6 place-items-center rounded-full text-xs font-extrabold ${
+                i < current ? "bg-ok text-white" : i === current ? "bg-brand-magenta text-white" : "bg-canvas-2 text-brand-gray"
+              }`}
+            >
+              {i < current ? "✓" : i + 1}
+            </span>
+            <span className={i === current ? "font-bold text-ink" : "text-brand-gray"}>{label}</span>
+            {i < M1_STEPS.length - 1 && <span className="mx-1 h-px w-6 bg-line-strong" />}
+          </li>
+        ))}
+      </ol>
+      {children && <div className="flex flex-wrap items-center gap-3">{children}</div>}
+    </div>
+  );
+}
+
+/** "Your situation": the facilitator-facing case context, editable in Admin -> Settings. */
+function Briefing({ text, compact = false }: { text: string; compact?: boolean }) {
+  const body = (
+    <div className="space-y-2 text-[15px] leading-relaxed text-ink-soft">
+      {paragraphs(text).map((p, i) => (
+        <p key={i}>{p}</p>
+      ))}
+    </div>
+  );
+  if (compact) {
+    return (
+      <details className="card border-l-4 border-l-brand-magenta p-5" open>
+        <summary className="cursor-pointer font-bold">
+          <span className="eyebrow mr-2">Your situation</span>Who you are coaching and why
+        </summary>
+        <div className="mt-3">{body}</div>
+      </details>
+    );
+  }
+  return (
+    <section className="card border-l-4 border-l-brand-magenta">
+      <p className="eyebrow mb-2">Your situation</p>
+      {body}
+    </section>
   );
 }
