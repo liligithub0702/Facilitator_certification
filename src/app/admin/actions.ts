@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assignCards, assignModule1Cases, assignModule2Recordings, assignSections, type FacilitatorRef, type ScenarioRef } from "@/lib/assignment";
 import { requireRole } from "@/lib/auth";
-import { siteUrl } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { REGIONS, type Role } from "@/lib/types";
 
@@ -238,26 +237,40 @@ export async function overrideAssignment(cohortId: string, submissionId: string,
 // ---------------------------------------------------------------------------
 // Users
 // ---------------------------------------------------------------------------
-export async function inviteUser(formData: FormData) {
+/** Creates an account with a starting password. No email is sent; the admin passes it on. */
+export async function createUserAccount(formData: FormData) {
   const { profile } = await requireRole("admin");
   const email = str(formData, "email").toLowerCase();
   const role = str(formData, "role") as Role;
   const region = str(formData, "region") || null;
   const fullName = str(formData, "full_name") || null;
+  const password = String(formData.get("password") ?? "");
   if (!["facilitator", "grader", "admin", "leader"].includes(role)) throw new Error("Invalid role");
+  if (password.length < 8) redirect("/admin/users?error=" + encodeURIComponent("Use a starting password of at least 8 characters."));
 
   const admin = createAdminClient();
-  // Lets invited people in even when sign-ups are limited to work email domains.
+  // Lets admin-created people in even when sign-ups are limited to work email domains.
   await admin.from("signup_allowlist").upsert({ email, added_by: profile.id });
-  const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-    data: { full_name: fullName },
-    redirectTo: `${siteUrl()}/auth/confirm`,
+  const { data, error } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { full_name: fullName },
+    app_metadata: { role, region },
   });
   if (error) redirect(`/admin/users?error=${encodeURIComponent(error.message)}`);
-  await admin.auth.admin.updateUserById(data.user.id, { app_metadata: { role, region } });
   await admin.from("profiles").upsert({ id: data.user.id, email, full_name: fullName, role, region });
   revalidatePath("/admin/users");
-  redirect(`/admin/users?invited=${encodeURIComponent(email)}`);
+  redirect(`/admin/users?created=${encodeURIComponent(email)}`);
+}
+
+export async function resetPassword(userId: string, formData: FormData) {
+  await requireRole("admin");
+  const password = String(formData.get("password") ?? "");
+  if (password.length < 8) redirect("/admin/users?error=" + encodeURIComponent("Use a password of at least 8 characters."));
+  const { error } = await createAdminClient().auth.admin.updateUserById(userId, { password });
+  if (error) redirect(`/admin/users?error=${encodeURIComponent(error.message)}`);
+  redirect("/admin/users?reset=1");
 }
 
 export async function updateUser(userId: string, formData: FormData) {

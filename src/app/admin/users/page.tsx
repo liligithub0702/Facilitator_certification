@@ -1,22 +1,25 @@
 import { requireRole } from "@/lib/auth";
 import { REGIONS, type Profile } from "@/lib/types";
-import { inviteUser, updateUser } from "../actions";
+import { createUserAccount, resetPassword, updateUser } from "../actions";
 
 const ROLES = ["facilitator", "grader", "admin", "leader"] as const;
 
 export default async function UsersPage({ searchParams }: PageProps<"/admin/users">) {
   const { supabase } = await requireRole("admin");
-  const { invited, error } = await searchParams;
+  const { created, reset, error } = await searchParams;
   const { data: users } = await supabase.from("profiles").select("*").order("role").order("full_name").returns<Profile[]>();
 
   return (
     <div className="space-y-6">
       <h1 className="h1">Users</h1>
-      {typeof invited === "string" && <p className="text-sm text-ok">Invite sent to {invited}.</p>}
+      {typeof created === "string" && (
+        <p className="text-sm text-ok">Account created for {created}. Give them their email and starting password.</p>
+      )}
+      {reset && <p className="text-sm text-ok">Password updated.</p>}
       {typeof error === "string" && <p className="text-sm text-danger">{error}</p>}
 
-      <form action={inviteUser} className="card grid gap-3 sm:grid-cols-5 sm:items-end">
-        <h2 className="h2 sm:col-span-5">Invite someone</h2>
+      <form action={createUserAccount} className="card grid gap-3 sm:grid-cols-3 sm:items-end lg:grid-cols-6">
+        <h2 className="h2 sm:col-span-3 lg:col-span-6">Create an account</h2>
         <label><span className="label">Email</span><input name="email" type="email" required className="input" /></label>
         <label><span className="label">Name</span><input name="full_name" className="input" /></label>
         <label>
@@ -27,13 +30,17 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
           <span className="label">Region</span>
           <select name="region" className="input"><option value="">—</option>{REGIONS.map((r) => <option key={r}>{r}</option>)}</select>
         </label>
-        <button className="btn btn-primary">Send invite</button>
-        <p className="muted sm:col-span-5">People can also sign up themselves from the login page; they start as facilitators. Change roles below. Limit sign-ups to work emails in Settings.</p>
+        <label><span className="label">Starting password</span><input name="password" type="text" minLength={8} required className="input" autoComplete="off" /></label>
+        <button className="btn btn-primary">Create account</button>
+        <p className="muted sm:col-span-3 lg:col-span-6">
+          No email is sent: give the person their email and starting password yourself. People can also create their own account on the
+          login page; they start as facilitators. Change roles below. Limit sign-ups to work emails in Settings.
+        </p>
       </form>
 
       <div className="card overflow-x-auto p-0">
         <table className="table">
-          <thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Region</th><th /></tr></thead>
+          <thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Region</th><th /><th>Reset password</th></tr></thead>
           <tbody>
             {(users ?? []).map((u) => (
               <tr key={u.id}>
@@ -46,6 +53,12 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
                       <option value="">—</option>{REGIONS.map((r) => <option key={r}>{r}</option>)}
                     </select>
                     <button className="btn">Save</button>
+                  </form>
+                </td>
+                <td>
+                  <form action={resetPassword.bind(null, u.id)} className="flex gap-1">
+                    <input name="password" type="text" minLength={8} required placeholder="New password" className="input w-36" autoComplete="off" />
+                    <button className="btn">Set</button>
                   </form>
                 </td>
               </tr>
