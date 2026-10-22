@@ -84,7 +84,7 @@ export default async function ModulePage({ params }: PageProps<"/facilitator/mod
             <AdvanceButton id={s.id} label="I've chosen: prepare the session" confirm="Move on to preparing your session? You can't come back to this page until your preparation is submitted." />
           </StepBar>
           <Briefing text={briefing} compact />
-          {data && <Dashboard data={data} flag={flag} />}
+          {data && <Dashboard data={data} flag={flag} storageKey={`tmu-m1-agent-${s.id}`} />}
         </div>
       );
     }
@@ -101,7 +101,7 @@ export default async function ModulePage({ params }: PageProps<"/facilitator/mod
               sub="Coaching cycle stage 1: plan, think, review the performance, prepare. Choose the agent you'll coach first and plan the conversation. Your answers save as you type."
             />
             <div className="card">
-              <ResponseForm id={s.id} fields={READOUT_FIELDS} initial={s.readout} agents={agents} submitLabel="Submit preparation" />
+              <ResponseForm id={s.id} fields={READOUT_FIELDS} initial={s.readout} agents={agents} prefillKey={`tmu-m1-agent-${s.id}`} submitLabel="Submit preparation" />
             </div>
           </div>
         </div>

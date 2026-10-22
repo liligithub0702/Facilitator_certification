@@ -1,11 +1,14 @@
+"use client";
+
 // Team performance dashboard (Team 7 / Team 12). Data comes from public.dashboards.
-// Rendered on the server; no interactivity so the facilitator reads the whole thing.
+// Tabbed so it stays easy to navigate; the Agents and QA audits tabs are filterable.
 //
 // Design rule: present the data clearly, but never judge it. No red/green "good/bad"
 // colouring, because spotting the signals (and ruling out the distractor) is exactly
 // what Module 1 assesses. Targets are shown as reference lines and rows instead.
 
-import type { ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
+import { AgentExplorer, QaAuditLog } from "./DashboardExplorer";
 
 export type DashboardData = {
   label: string;
@@ -37,6 +40,24 @@ export type DashboardData = {
   profiles?: AgentProfile[];
   /** Bridge targets for new hires, shown with the agent table. */
   bridge?: string;
+  /** Weekly KPIs per agent (migration 7). `primary` is the team's primary metric (AHT or repeat contacts). */
+  weekly?: WeeklyRow[];
+  /** QA audit log in the format of the "QA Audits" sheet (migration 7). */
+  qa_audits?: QaAudit[];
+  qa_pass?: number;
+};
+
+export type WeeklyRow = { agent: string; week: string; tenure: string; primary: number; qa: number; csat: number; calls: number; attendance: number };
+export type QaAudit = {
+  agent: string;
+  week: string;
+  call_type: string;
+  score: number;
+  pass: boolean;
+  driver_1: string;
+  driver_2: string;
+  driver_3: string;
+  agent_related: boolean;
 };
 
 export type AgentProfile = { name: string; tenure: string; about: string; interests: string; coaching: string };
@@ -62,7 +83,7 @@ const GLOSSARY: [string, string][] = [
 ];
 
 /** Mini trend line. Pass a fixed `domain` when comparing rows, so small wobbles stay small. */
-function Sparkline({ values, domain, color = "var(--color-brand-indigo)" }: { values: number[]; domain?: [number, number]; color?: string }) {
+export function Sparkline({ values, domain, color = "var(--color-brand-indigo)" }: { values: number[]; domain?: [number, number]; color?: string }) {
   const W = 80, H = 24;
   const [min, max] = domain ?? [Math.min(...values), Math.max(...values)];
   const span = max - min || 1;
@@ -158,7 +179,7 @@ function LineChart({
   );
 }
 
-function Panel({ title, what, children, className = "" }: { title: string; what: string; children: ReactNode; className?: string }) {
+export function Panel({ title, what, children, className = "" }: { title: string; what: string; children: ReactNode; className?: string }) {
   return (
     <section className={`card ${className}`}>
       <h3 className="text-base font-extrabold">{title}</h3>
@@ -222,7 +243,33 @@ function FlagCard({ flag, profile }: { flag: CoachingFlag; profile?: AgentProfil
   );
 }
 
-export function Dashboard({ data, flag }: { data: DashboardData; flag?: CoachingFlag | null }) {
+const TABS = [
+  { id: "overview", label: "Team overview" },
+  { id: "agents", label: "Agents" },
+  { id: "qa", label: "QA audits" },
+  { id: "attendance", label: "Attendance & hiring" },
+  { id: "team", label: "Meet your team" },
+] as const;
+type TabId = (typeof TABS)[number]["id"];
+
+export function Dashboard({
+  data,
+  flag,
+  storageKey,
+}: {
+  data: DashboardData;
+  flag?: CoachingFlag | null;
+  /** Where the "Who do you want to coach?" choice is remembered for the preparation form. */
+  storageKey?: string;
+}) {
+  const [tab, setTab] = useState<TabId>("overview");
+  const tabsTop = useRef<HTMLDivElement>(null);
+  const openTab = (id: TabId) => {
+    setTab(id);
+    // If the reader has scrolled past the tabs, bring the new section's start into view.
+    const el = tabsTop.current;
+    if (el && el.getBoundingClientRect().top < 0) window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - 140, behavior: "smooth" });
+  };
   const p = data.primary;
   const last = data.weeks[data.weeks.length - 1];
   const days = WEEKDAYS.filter((d) => d in data.shrinkage.byDay);
@@ -262,6 +309,24 @@ export function Dashboard({ data, flag }: { data: DashboardData; flag?: Coaching
 
       {flag && <FlagCard flag={flag} profile={data.profiles?.find((p) => p.name === flag.agent)} />}
 
+      <div ref={tabsTop} />
+      <nav className="no-print sticky top-[132px] z-[5] -mx-1 flex gap-1 overflow-x-auto rounded-full border border-line bg-paper/95 p-1 shadow-soft backdrop-blur" role="tablist" aria-label="Dashboard sections">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => openTab(t.id)}
+            className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-bold transition ${tab === t.id ? "bg-brand-indigo text-white" : "text-ink-soft hover:bg-canvas"}`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+
+      {tab === "overview" && (
+        <>
       {/* Snapshot */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Tile
@@ -339,47 +404,6 @@ export function Dashboard({ data, flag }: { data: DashboardData; flag?: Coaching
         </div>
       </Panel>
 
-      {/* Agent table */}
-      <Panel title="Agents" what={`${data.agentTable.note}${data.bridge ? ` ${data.bridge}` : ""}`}>
-        <div className="overflow-x-auto">
-          <table className="table">
-            <thead>
-              <tr>
-                {data.agentTable.columns.map((c, i) => (
-                  <th key={c} className={i >= 2 ? "text-right" : ""}>{c}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.agentTable.rows.map((r) => {
-                const name = String(r[0]);
-                const isNew = name.endsWith("(new hire)");
-                return (
-                  <tr key={name}>
-                    <td className="font-semibold">
-                      {name.replace(/ \(new hire\)$/, "")}
-                      {isNew && <span className="badge ml-2 border-brand-blue/30 bg-brand-blue/8 text-brand-blue">New hire</span>}
-                    </td>
-                    {r.slice(1).map((c, i) => (
-                      <td key={i} className={i >= 1 ? "text-right tabular-nums" : ""}>{c}</td>
-                    ))}
-                  </tr>
-                );
-              })}
-              <tr>
-                <td className="text-brand-gray">Target</td>
-                <td />
-                {data.agentTable.columns.slice(2).map((c) => (
-                  <td key={c} className="text-right text-brand-gray tabular-nums">
-                    {c.startsWith(p.name) ? p.target : c.startsWith("QA") ? 82 : "—"}
-                  </td>
-                ))}
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </Panel>
-
       {/* Quality by agent + huddles */}
       <Panel
         title={`${data.quality.name} by agent, and huddle attendance`}
@@ -434,6 +458,63 @@ export function Dashboard({ data, flag }: { data: DashboardData; flag?: Coaching
         </div>
       </Panel>
 
+        </>
+      )}
+
+      {tab === "agents" && (
+        data.weekly?.length ? (
+          <AgentExplorer data={data} storageKey={storageKey} flaggedAgent={flag?.agent} />
+        ) : (
+          <>
+      {/* Agent table */}
+      <Panel title="Agents" what={`${data.agentTable.note}${data.bridge ? ` ${data.bridge}` : ""}`}>
+        <div className="overflow-x-auto">
+          <table className="table">
+            <thead>
+              <tr>
+                {data.agentTable.columns.map((c, i) => (
+                  <th key={c} className={i >= 2 ? "text-right" : ""}>{c}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {data.agentTable.rows.map((r) => {
+                const name = String(r[0]);
+                const isNew = name.endsWith("(new hire)");
+                return (
+                  <tr key={name}>
+                    <td className="font-semibold">
+                      {name.replace(/ \(new hire\)$/, "")}
+                      {isNew && <span className="badge ml-2 border-brand-blue/30 bg-brand-blue/8 text-brand-blue">New hire</span>}
+                    </td>
+                    {r.slice(1).map((c, i) => (
+                      <td key={i} className={i >= 1 ? "text-right tabular-nums" : ""}>{c}</td>
+                    ))}
+                  </tr>
+                );
+              })}
+              <tr>
+                <td className="text-brand-gray">Target</td>
+                <td />
+                {data.agentTable.columns.slice(2).map((c) => (
+                  <td key={c} className="text-right text-brand-gray tabular-nums">
+                    {c.startsWith(p.name) ? p.target : c.startsWith("QA") ? 82 : "—"}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+
+          </>
+        )
+      )}
+
+      {tab === "qa" && <QaAuditLog data={data} />}
+
+      {tab === "attendance" && (
+        <>
       <div className="grid gap-5 lg:grid-cols-2">
         {/* Shrinkage */}
         <Panel title="Shrinkage by weekday" what={`Average share of scheduled time lost on each weekday. The dashed line is the ${data.shrinkage.target}% target.`}>
@@ -507,6 +588,11 @@ export function Dashboard({ data, flag }: { data: DashboardData; flag?: Coaching
         </Panel>
       </div>
 
+        </>
+      )}
+
+      {tab === "team" && (
+        <>
       {data.profiles && data.profiles.length > 0 && (
         <Panel title="Meet your team" what="Who your agents are and how each of them likes to be coached.">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -526,6 +612,9 @@ export function Dashboard({ data, flag }: { data: DashboardData; flag?: Coaching
             ))}
           </div>
         </Panel>
+      )}
+
+        </>
       )}
 
       <details className="card">

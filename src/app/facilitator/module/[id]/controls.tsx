@@ -60,6 +60,7 @@ export function ResponseForm({
   tags,
   submitLabel,
   agents,
+  prefillKey,
 }: {
   id: string;
   fields: readonly FormField[];
@@ -68,6 +69,8 @@ export function ResponseForm({
   submitLabel: string;
   /** Options for fields of kind "agent". */
   agents?: string[];
+  /** localStorage key holding the agent picked on the dashboard, used to pre-fill the agent field. */
+  prefillKey?: string;
 }) {
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(initial);
@@ -78,6 +81,25 @@ export function ResponseForm({
     latest.current = values;
   }, [values]);
   const dirty = useRef(false);
+
+  // Carry over the "Who do you want to coach?" choice from the dashboard.
+  useEffect(() => {
+    if (!prefillKey) return;
+    const field = fields.find((f) => f.kind === "agent");
+    if (!field || initial[field.key]) return;
+    try {
+      const saved = window.localStorage.getItem(prefillKey);
+      if (saved) {
+        // Browser storage only exists after mount; reading it here avoids a hydration mismatch.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setValues((v) => ({ ...v, [field.key]: saved }));
+        dirty.current = true;
+        setSaved("dirty");
+      }
+    } catch {
+      /* storage unavailable */
+    }
+  }, [prefillKey, fields, initial]);
 
   const save = useCallback(
     async (final: boolean) => {
