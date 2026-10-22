@@ -4,7 +4,7 @@ import { signInWithMicrosoft } from "./actions";
 const ERRORS: Record<string, string> = {
   link: "That sign-in link has expired or was already used. Request a new one.",
   sso: "Microsoft sign-in is not available right now.",
-  "no-profile": "Your account has no access yet. Ask the certification admin for an invite.",
+  "no-profile": "Your account is not set up yet. Try signing in again, or contact the certification admin.",
 };
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
@@ -13,7 +13,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 py-16">
       <h1 className="h1">TMU Facilitator Certification</h1>
-      <p className="muted mt-1 mb-6">Sign in with the address your invite was sent to.</p>
+      <p className="muted mt-1 mb-6">Enter your email to sign in or create your account. We&apos;ll email you a sign-in link; no password needed.</p>
       <div className="card space-y-4">
         {typeof error === "string" && ERRORS[error] && <p className="text-sm text-danger">{ERRORS[error]}</p>}
         {microsoft && (

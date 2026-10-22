@@ -4,7 +4,7 @@ The app for the Q4 2026 TMU facilitator re-certification. Facilitators take thre
 
 - **Facilitators**: give recording consent. Module 1: a 15-minute dashboard review, then a 5-minute readout; both are timed on the server. The live coaching session follows. Module 2: watch a recording (one replay allowed), tag moments, then write a 25-minute debrief. Module 2 unlocks only after Module 1 is passed. Module 3: see the assigned section, the session date and the learner cards they play.
 - **Graders**: work a queue filtered by module, cohort and region. They see the evidence on the left and the scorecard on the right. Red flags automatically set a module to not passed. The Module 2 answer key appears as a checklist. Calibration diffs show when a submission has two gradings. Graders also set the outcome with the rules engine's suggestion, and write or approve an AI-drafted exec summary.
-- **Admins**: create cohorts and invite users. Auto-assign hands out cases, recordings, sections and learner cards by the rules in the requirements doc. Admins can override any assignment, open a reassessment on the alternate version, and edit timers and scorecard levels.
+- **Admins**: create cohorts, invite users and set roles (people can also sign up themselves and start as facilitators). Auto-assign hands out cases, recordings, sections and learner cards by the rules in the requirements doc. Admins can override any assignment, open a reassessment on the alternate version, and edit timers and scorecard levels.
 - **Leaders**: see status by facilitator, region and program, the average score per dimension, and approved exec summaries. They can export to PDF from the browser's print dialog.
 
 ## Architecture
@@ -13,7 +13,7 @@ The app for the Q4 2026 TMU facilitator re-certification. Facilitators take thre
 | --- | --- | --- |
 | Hosting | **Vercel**, Next.js 16 App Router | Server components and server actions keep every data call on the server. Preview deployments per branch. |
 | Database and auth | **Supabase** (Postgres, Auth, Storage) | Row-level security enforces the "cannot see" column of the roles table inside the database itself, not only in the UI. |
-| Sign-in | Invite-only magic links, with optional Microsoft (Entra ID) SSO | No passwords to manage. Public sign-up is disabled. |
+| Sign-in | Email magic links with self sign-up, plus optional Microsoft (Entra ID) SSO | No passwords to manage. New accounts are always facilitators; admins can limit sign-up to work email domains (enforced in the database). |
 | Timers and gates | Postgres `SECURITY DEFINER` functions (`start_module`, `save_response`, `advance_phase`, `record_play`, `add_tag`, `sync_submission`) | Deadlines use the database clock. The browser cannot extend a timer, skip the Module 2 gate or exceed the replay limit. |
 | Module 2 videos | Private Storage bucket `module2-recordings` | The server hands a 45-minute signed URL only to a facilitator whose Module 2 is in progress. |
 | Module 1 and 3 recordings | Teams links attached by the grader (v1 scope) | Matches the requirements: in-browser recording is v2. |
@@ -32,7 +32,7 @@ The app for the Q4 2026 TMU facilitator re-certification. Facilitators take thre
 ```
 supabase/migrations/   schema, RLS + RPCs, reference content (dashboards, cases, answer keys, cards), storage bucket
 supabase/seed.sql      local demo users (admin, grader, leader, 3 facilitators @example.com)
-supabase/templates/    invite + magic-link emails (token-hash links -> /auth/confirm)
+supabase/templates/    invite, confirm-signup and magic-link emails (token-hash links -> /auth/confirm)
 src/lib/rules.ts       pass rules, red flags, answer-key standard, outcome logic (unit tested)
 src/lib/assignment.ts  case / recording / section / learner-card assignment (unit tested)
 src/lib/exec-summary.ts  Claude draft of the exec summary
@@ -61,11 +61,11 @@ src/proxy.ts           session refresh + sign-in redirect (Next 16 "proxy", form
 
 ### 2. Configure Supabase Auth (dashboard → Authentication)
 
-- **Sign In / Providers → User signups:** turn off "Allow new users to sign up". Keep the **Email** provider enabled.
+- **Sign In / Providers → User signups:** leave "Allow new users to sign up" on, and keep the **Email** provider enabled. To limit sign-ups to work emails, set the allowed domains in the app under **Admin → Settings**.
 - **URL Configuration:** set Site URL to your production URL (e.g. `https://tmu-cert.vercel.app`). Add these redirect URLs: `https://tmu-cert.vercel.app/**`, `https://*-<your-team>.vercel.app/**` (previews) and `http://localhost:3000/**`.
-- **Emails → Templates:** paste `supabase/templates/invite.html` into *Invite user* and `supabase/templates/magic_link.html` into *Magic Link*. Invites will not work without the invite template. The default template sends tokens in a URL fragment that a server can't read.
+- **Emails → Templates:** paste `supabase/templates/confirmation.html` into *Confirm signup*, `supabase/templates/invite.html` into *Invite user* and `supabase/templates/magic_link.html` into *Magic Link*. Sign-ups and invites will not work without these templates. The default template sends tokens in a URL fragment that a server can't read.
 - **Emails → SMTP Settings:** set up custom SMTP, such as the company relay, SendGrid, Resend or Postmark. The built-in sender is rate-limited to a handful of emails per hour and is not meant for production.
-- **Optional, Microsoft SSO:** enable the Azure provider with an Entra ID app registration. Set the redirect URI to `https://<project-ref>.supabase.co/auth/v1/callback`. Then set `NEXT_PUBLIC_AZURE_SSO_ENABLED=true` in Vercel. Users still need an invite first, because sign-ups are off.
+- **Optional, Microsoft SSO:** enable the Azure provider with an Entra ID app registration. Set the redirect URI to `https://<project-ref>.supabase.co/auth/v1/callback`. Then set `NEXT_PUBLIC_AZURE_SSO_ENABLED=true` in Vercel. If you limit sign-ups to work domains, Microsoft sign-ins from other domains are blocked too.
 
 ### 3. Upload the Module 2 recordings
 

@@ -1,19 +1,34 @@
 import { requireRole } from "@/lib/auth";
 import type { Dimension } from "@/lib/types";
-import { saveDimension, saveTimers } from "../actions";
+import { saveDimension, saveSignupDomains, saveTimers } from "../actions";
 
 export default async function SettingsPage() {
   const { supabase } = await requireRole("admin");
-  const [{ data: timersRow }, { data: dims }, { data: coverage }] = await Promise.all([
+  const [{ data: timersRow }, { data: dims }, { data: coverage }, { data: signupRow }] = await Promise.all([
     supabase.from("settings").select("value").eq("key", "timers").single(),
     supabase.from("dimensions").select("*").order("id").returns<Dimension[]>(),
     supabase.from("module_dimensions").select("*"),
+    supabase.from("settings").select("value").eq("key", "signup").maybeSingle(),
   ]);
+  const domains = ((signupRow?.value as { allowed_domains?: string[] })?.allowed_domains ?? []).join(", ");
   const t = (timersRow?.value ?? {}) as Record<string, number>;
 
   return (
     <div className="space-y-6">
       <h1 className="h1">Settings</h1>
+
+      <form action={saveSignupDomains} className="card space-y-3">
+        <h2 className="h2">Who can sign up</h2>
+        <label className="block">
+          <span className="label">Allowed email domains</span>
+          <input name="allowed_domains" defaultValue={domains} placeholder="e.g. sutherlandglobal.com" className="input max-w-md" />
+        </label>
+        <p className="muted">
+          Empty = anyone can sign up. With domains listed, only those addresses can create an account; people you invite from Users are
+          always allowed. New accounts start as facilitators.
+        </p>
+        <button className="btn btn-primary">Save</button>
+      </form>
 
       <form action={saveTimers} className="card grid gap-3 sm:grid-cols-3">
         <h2 className="h2 sm:col-span-3">Timers</h2>

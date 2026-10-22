@@ -28,7 +28,7 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
           <select name="region" className="input"><option value="">—</option>{REGIONS.map((r) => <option key={r}>{r}</option>)}</select>
         </label>
         <button className="btn btn-primary">Send invite</button>
-        <p className="muted sm:col-span-5">The app is invite-only: sign-ups are disabled, and the login page only sends links to existing accounts.</p>
+        <p className="muted sm:col-span-5">People can also sign up themselves from the login page; they start as facilitators. Change roles below. Limit sign-ups to work emails in Settings.</p>
       </form>
 
       <div className="card overflow-x-auto p-0">

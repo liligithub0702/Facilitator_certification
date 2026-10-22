@@ -239,7 +239,7 @@ export async function overrideAssignment(cohortId: string, submissionId: string,
 // Users
 // ---------------------------------------------------------------------------
 export async function inviteUser(formData: FormData) {
-  await requireRole("admin");
+  const { profile } = await requireRole("admin");
   const email = str(formData, "email").toLowerCase();
   const role = str(formData, "role") as Role;
   const region = str(formData, "region") || null;
@@ -247,6 +247,8 @@ export async function inviteUser(formData: FormData) {
   if (!["facilitator", "grader", "admin", "leader"].includes(role)) throw new Error("Invalid role");
 
   const admin = createAdminClient();
+  // Lets invited people in even when sign-ups are limited to work email domains.
+  await admin.from("signup_allowlist").upsert({ email, added_by: profile.id });
   const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
     data: { full_name: fullName },
     redirectTo: `${siteUrl()}/auth/confirm`,
@@ -288,6 +290,16 @@ export async function saveTimers(formData: FormData) {
     },
     updated_at: new Date().toISOString(),
   });
+  revalidatePath("/admin/settings");
+}
+
+export async function saveSignupDomains(formData: FormData) {
+  const { supabase } = await requireRole("admin");
+  const allowed = str(formData, "allowed_domains")
+    .split(/[\s,;]+/)
+    .map((d) => d.toLowerCase().replace(/^@/, ""))
+    .filter((d) => /^[a-z0-9.-]+\.[a-z]{2,}$/.test(d));
+  await supabase.from("settings").upsert({ key: "signup", value: { allowed_domains: allowed }, updated_at: new Date().toISOString() });
   revalidatePath("/admin/settings");
 }
 
