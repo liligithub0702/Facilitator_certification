@@ -55,7 +55,7 @@ export async function signUp(_: LoginState, formData: FormData): Promise<LoginSt
 }
 
 const CONFIRM_EMAIL_ON =
-  "Your account needs email confirmation, which is switched off for this app. Ask the admin to turn off \"Confirm email\" in Supabase (Authentication → Sign In / Providers → Email).";
+  "Email confirmation is still turned on in Supabase, so this account can't sign in yet. The admin needs to turn off \"Confirm email\" (Authentication → Sign In / Providers → Email) and mark this account as confirmed.";
 
 async function allowedDomains(): Promise<string[]> {
   try {
