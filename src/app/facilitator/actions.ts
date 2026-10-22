@@ -36,8 +36,10 @@ export async function saveResponse(submissionId: string, content: Record<string,
     .rpc("save_response", { p_submission: submissionId, p_content: content, p_final: final })
     .single<{ status: string; phase: string }>();
   if (error) return { error: error.message };
-  if (final || data.status !== "in_progress") revalidatePath(`/facilitator/module/${submissionId}`);
-  return { status: data.status, locked: data.status !== "in_progress" };
+  // The Module 1 coaching form is editable by phase alone (grading may already have started).
+  const locked = data.phase === "documentation" ? false : data.status !== "in_progress";
+  if (final || locked) revalidatePath(`/facilitator/module/${submissionId}`);
+  return { status: data.status, locked };
 }
 
 export async function recordPlay(submissionId: string) {

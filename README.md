@@ -2,7 +2,7 @@
 
 The app for the Q4 2026 TMU facilitator re-certification. Facilitators take three modules, graders score them against the scorecard, and leaders get an overview and exec summaries.
 
-- **Facilitators**: give recording consent. Module 1: a 15-minute dashboard review, then a 5-minute readout; both are timed on the server. The live coaching session follows. Module 2: watch a recording (one replay allowed), tag moments, then write a 25-minute debrief. Module 2 unlocks only after Module 1 is passed. Module 3: see the assigned section, the session date and the learner cards they play.
+- **Facilitators**: give recording consent. Module 1 follows the TMU coaching cycle, with the facilitator playing the Team Manager: review the team dashboard, this week's coaching flag and every agent's profile, then choose an agent (15 min); prepare the session (10 min); coach that agent live while the certifier plays them; then complete the coaching form (Start / Stop / Continue, SMART plan, follow-through; 10 min). All timers run on the server. Each case flags a different agent (Case 1: a new joiner below bridge targets; Case 2: a tenured top performer slipping; Case 3: a tenured agent skipping the KB and process; spare: attendance). Module 2: watch a recording (one replay allowed), tag moments, then write a 25-minute debrief. Module 2 unlocks only after Module 1 is passed. Module 3: see the assigned section, the session date and the learner cards they play.
 - **Graders**: work a queue filtered by module, cohort and region. They see the evidence on the left and the scorecard on the right. Red flags automatically set a module to not passed. The Module 2 answer key appears as a checklist. Calibration diffs show when a submission has two gradings. Graders also set the outcome with the rules engine's suggestion, and write or approve an AI-drafted exec summary.
 - **Admins**: create cohorts, create accounts, reset passwords and set roles (people can also create their own account and start as facilitators). Auto-assign hands out cases, recordings, sections and learner cards by the rules in the requirements doc. Admins can override any assignment, open a reassessment on the alternate version, and edit timers and scorecard levels.
 - **Leaders**: see status by facilitator, region and program, the average score per dimension, and approved exec summaries. They can export to PDF from the browser's print dialog.
@@ -22,7 +22,7 @@ The app for the Q4 2026 TMU facilitator re-certification. Facilitators take thre
 ### Security model
 
 - Every table has RLS enabled, and the `anon` role has no access.
-- Facilitators **never** receive scenarios, role-player briefs, twists, answer keys, gradings or other people's records. They read only their own submissions, their assigned dashboard version (after they start Module 1), section titles and the learner cards they personally play (via `my_cards()`).
+- Facilitators **never** receive scenarios, role-player briefs, twists, answer keys, gradings or other people's records. They read only their own submissions, their assigned dashboard version (after they start Module 1), the public part of their own case's coaching flag (via `case_brief()`, never the role-play brief), section titles and the learner cards they personally play (via `my_cards()`).
 - Facilitators cannot write tables directly. Column grants stop graders and admins from rewriting a facilitator's readout or debrief.
 - Graders see only cohorts they are assigned to. Leaders get aggregates through `leader_overview()` and `dimension_averages()` and see approved summaries only, with no recordings, tags or raw notes.
 - `scripts/db-security-test.sql` runs 33 checks for these rules. CI runs it on every PR.
@@ -96,7 +96,7 @@ In **Storage → module2-recordings**, upload the four videos with these exact f
 ### 6. Run a cycle
 
 1. **Admin → Cohorts:** create a cohort of 3–4 people with a region and week, add facilitators, and assign two graders. Click **Auto-assign**, then check the warnings.
-2. Set the Module 1 coaching slot per facilitator from the grader's submission page, and the Module 3 teach-back date on the cohort page.
+2. Set the Module 1 coaching slot per facilitator from the grader's submission page (the facilitator's coaching form opens once that time has passed), and the Module 3 teach-back date on the cohort page.
 3. Graders attach the Teams recording links and grade. A second grader on the same submission counts as a calibration grading, and the app shows the per-dimension differences.
 4. After grading, open **Outcome & exec summary** and confirm the outcome. Draft the summary, edit it and approve it.
 5. If a module is not passed, the cohort page offers **Open reassessment**: a second try on Version B or the spare case.

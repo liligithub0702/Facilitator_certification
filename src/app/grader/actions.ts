@@ -3,12 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { draftExecSummary } from "@/lib/exec-summary";
-import { evaluateModule, maxLevel, tallyAnswerKey, type ModuleNo, type Outcome, type PassStandard } from "@/lib/rules";
+import { COACHING_CHECKLIST, DOC_RUBRIC, evaluateModule, maxLevel, PREP_RUBRIC, tallyAnswerKey, type ModuleNo, type Outcome, type PassStandard } from "@/lib/rules";
 import type { AnswerKeyItem, ExecSummaryContent } from "@/lib/types";
 
 export type GradingInput = {
   scores: Record<number, { level?: number; evidence?: string }>;
-  readout: { observations?: number; hypothesis?: number; questions?: number };
+  /** Module 1 written work: PREP_RUBRIC and DOC_RUBRIC keys, each 0–2. */
+  readout: Record<string, number | undefined>;
+  /** Module 1: coaching-cycle and funnel stages observed in the live session. */
+  checklist: { conversation: string[]; funnel: string[] };
   hits: string[];
   redFlags: string[];
   submit: boolean;
@@ -58,7 +61,13 @@ export async function saveGrading(submissionId: string, input: GradingInput) {
     submission_id: submissionId,
     grader_id: profile.id,
     is_calibration: isCalibration,
-    readout_scores: { observations: clamp02(input.readout.observations), hypothesis: clamp02(input.readout.hypothesis), questions: clamp02(input.readout.questions) },
+    readout_scores: Object.fromEntries(
+      [...PREP_RUBRIC, ...DOC_RUBRIC].map((r) => [r.key, clamp02(input.readout[r.key])]).filter(([, v]) => v != null),
+    ),
+    checklist: {
+      conversation: input.checklist.conversation.filter((c) => (COACHING_CHECKLIST.conversation as readonly string[]).includes(c)),
+      funnel: input.checklist.funnel.filter((c) => (COACHING_CHECKLIST.funnel as readonly string[]).includes(c)),
+    },
     answer_key_hits: input.hits,
     computed_result: evaluation.result,
     submitted_at: input.submit ? new Date().toISOString() : null,

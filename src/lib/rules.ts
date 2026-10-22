@@ -32,8 +32,9 @@ const ANY_MODULE: RedFlagDef[] = [
 
 export const RED_FLAGS: Record<ModuleNo, RedFlagDef[]> = {
   1: [
-    { code: "m1_solution_first_5", label: "Gives the solution in the first 5 minutes" },
-    { code: "m1_agrees_wrong_plan", label: "Agrees with a plan that targets the wrong people" },
+    { code: "m1_tells_answer", label: "Tells the agent the solution instead of coaching (e.g. in the first 5 minutes)" },
+    { code: "m1_blames_agent", label: "Blames the agent for something the data shows is team-wide or a process issue" },
+    { code: "m1_no_plan", label: "Ends without an agreed action plan or follow-up" },
     ...ANY_MODULE,
   ],
   2: [
@@ -132,13 +133,36 @@ export function maxLevel(module: ModuleNo, dimensionId: number, redFlags: string
   return 4;
 }
 
-export type ReadoutScores = { observations?: number; hypothesis?: number; questions?: number };
+/** A 0–2 scored item for the written parts of Module 1. */
+export type RubricItem = { key: string; label: string; levels: [string, string, string] };
 
-export function readoutTotal(s: ReadoutScores): { total: number; complete: boolean; developmentArea: boolean } {
-  const parts = [s.observations, s.hypothesis, s.questions];
+/** Module 1 preparation (the coaching cycle's Preparation stage), scored 0–8. */
+export const PREP_RUBRIC: RubricItem[] = [
+  { key: "choice", label: "Agent choice and rationale", levels: ["No clear reason, or picks on one metric alone", "Reasonable choice, generic reason", "Chooses the flagged agent and justifies it with evidence and impact"] },
+  { key: "observations", label: "Observations", levels: ["Restates single numbers", "Notes trends or behaviours", "Links behaviours, trends and dates; includes strengths"] },
+  { key: "root_cause", label: "Root-cause hypotheses", levels: ["Blames the agent", "Plausible but untested", "Plausible, to be tested through questions in the session"] },
+  { key: "adaptation", label: "Adapting to the agent", levels: ["Ignores the profile", "Mentions the profile generically", "Plans specifically around tenure and learning preference"] },
+];
+
+/** Module 1 coaching form (Documentation and Follow Through stages), scored 0–6. */
+export const DOC_RUBRIC: RubricItem[] = [
+  { key: "ssc", label: "Start / Stop / Continue", levels: ["Missing or vague", "Present but generic", "Specific, behavioural and agreed with the agent"] },
+  { key: "smart", label: "SMART action plan", levels: ["No measurable action", "Partly SMART", "Specific, measurable, owned by the agent, dated"] },
+  { key: "follow_up", label: "Follow-through plan", levels: ["None", "A date only", "Date plus how progress will be observed, validated and recognised"] },
+];
+
+/** Coaching-cycle and funnel stages graders tick while observing the live session. */
+export const COACHING_CHECKLIST = {
+  conversation: ["Build rapport", "Listen, question, connect", "Agree on the root causes (RCAs)", "Build the action plan", "Start / Stop / Continue", "Gain commitment"],
+  funnel: ["Opening the conversation", "Probing further", "Finding the root cause", "Creating an action plan", "Offering help", "Gaining commitment", "Debrief and putting it all together"],
+} as const;
+
+export function rubricTotal(scores: Record<string, number | undefined>, rubric: RubricItem[]) {
+  const parts = rubric.map((r) => scores[r.key]);
   const complete = parts.every((p) => p != null);
   const total = parts.reduce<number>((sum, p) => sum + (p ?? 0), 0);
-  return { total, complete, developmentArea: complete && total < 3 };
+  const max = rubric.length * 2;
+  return { total, max, complete, developmentArea: complete && total < max / 2 };
 }
 
 export type ModuleTry = { module: ModuleNo; tryNo: number; result: ModuleResult | null };

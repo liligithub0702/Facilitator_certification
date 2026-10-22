@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import type { FormField } from "@/lib/types";
 import { addTag, advancePhase, recordPlay, saveResponse, startModule } from "../../actions";
 
 export function ActionButton({
@@ -58,12 +59,15 @@ export function ResponseForm({
   initial,
   tags,
   submitLabel,
+  agents,
 }: {
   id: string;
-  fields: readonly { key: string; label: string }[];
+  fields: readonly FormField[];
   initial: Record<string, string>;
   tags?: TagRow[];
   submitLabel: string;
+  /** Options for fields of kind "agent". */
+  agents?: string[];
 }) {
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(initial);
@@ -117,6 +121,26 @@ export function ResponseForm({
       {fields.map((f) => (
         <div key={f.key}>
           <label htmlFor={f.key} className="label">{f.label}</label>
+          {f.hint && <p className="-mt-1 mb-1.5 text-xs text-brand-gray">{f.hint}</p>}
+          {f.kind === "agent" ? (
+            <select
+              id={f.key}
+              className="input max-w-xs"
+              value={values[f.key] ?? ""}
+              disabled={saved === "locked"}
+              onChange={(e) => {
+                setValues((v) => ({ ...v, [f.key]: e.target.value }));
+                dirty.current = true;
+                setSaved("dirty");
+              }}
+              onBlur={() => dirty.current && void save(false)}
+            >
+              <option value="">Choose an agent…</option>
+              {(agents ?? []).map((a) => (
+                <option key={a} value={a}>{a}</option>
+              ))}
+            </select>
+          ) : (
           <textarea
             id={f.key}
             className="input min-h-24"
@@ -130,6 +154,7 @@ export function ResponseForm({
             }}
             onBlur={() => dirty.current && void save(false)}
           />
+          )}
           {tags && tags.length > 0 && (
             <div className="mt-1 flex flex-wrap gap-1">
               <span className="muted">Link a tag:</span>
@@ -168,7 +193,7 @@ export function Module2Workspace({
   maxPlays: number;
   initialTags: TagRow[];
   /** Present once the debrief phase has started. */
-  debrief?: { fields: readonly { key: string; label: string }[]; initial: Record<string, string> };
+  debrief?: { fields: readonly FormField[]; initial: Record<string, string> };
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const [tags, setTags] = useState(initialTags);

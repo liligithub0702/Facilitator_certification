@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StatusBadge } from "@/components/AppShell";
 import { requireRole } from "@/lib/auth";
-import { computeOutcome, MODULE_NAMES, OUTCOME_LABELS, readoutTotal, type ModuleNo, type Outcome } from "@/lib/rules";
+import { computeOutcome, DOC_RUBRIC, MODULE_NAMES, OUTCOME_LABELS, PREP_RUBRIC, rubricTotal, type ModuleNo, type Outcome } from "@/lib/rules";
 import type { ExecSummaryContent, OutcomeRow } from "@/lib/types";
 import { setOutcome } from "../../actions";
 import { ExecSummaryEditor } from "./ExecSummaryEditor";
@@ -48,7 +48,8 @@ export default async function AttemptPage({ params }: PageProps<"/grader/attempt
   );
   const m1 = (subs ?? []).filter((s) => s.module === 1).at(-1);
   const m1Readout = m1?.gradings.find((g) => !g.is_calibration && g.submitted_at)?.readout_scores;
-  const readout = m1Readout ? readoutTotal(m1Readout) : null;
+  const prep = m1Readout ? rubricTotal(m1Readout, PREP_RUBRIC) : null;
+  const doc = m1Readout ? rubricTotal(m1Readout, DOC_RUBRIC) : null;
 
   return (
     <div className="space-y-6">
@@ -74,9 +75,13 @@ export default async function AttemptPage({ params }: PageProps<"/grader/attempt
             ))}
           </tbody>
         </table>
-        {readout?.complete && (
+        {(prep?.complete || doc?.complete) && (
           <p className="mt-2 text-sm">
-            Module 1 readout: {readout.total}/6{readout.developmentArea ? " — development area (does not fail the module on its own)" : ""}
+            Module 1 written work:{" "}
+            {prep?.complete && <>preparation {prep.total}/{prep.max}{prep.developmentArea ? " (development area)" : ""}</>}
+            {prep?.complete && doc?.complete && " · "}
+            {doc?.complete && <>coaching form {doc.total}/{doc.max}{doc.developmentArea ? " (development area)" : ""}</>}
+            <span className="muted"> · scored separately; does not fail the module on its own</span>
           </p>
         )}
       </section>

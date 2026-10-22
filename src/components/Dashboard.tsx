@@ -33,7 +33,16 @@ export type DashboardData = {
   };
   hiring: { note: string; rows: [string, number, string][] };
   events: { week: string; text: string }[];
+  /** "Meet your team": one profile per agent (added in migration 6). */
+  profiles?: AgentProfile[];
+  /** Bridge targets for new hires, shown with the agent table. */
+  bridge?: string;
 };
+
+export type AgentProfile = { name: string; tenure: string; about: string; interests: string; coaching: string };
+
+/** The facilitator-visible part of the case: the agent flagged for coaching this week. */
+export type CoachingFlag = { agent: string; public: { headline: string; observations: string[] } };
 
 // jsonb does not keep key order, so the display order is fixed here.
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -48,6 +57,8 @@ const GLOSSARY: [string, string][] = [
   ["Tenure band", "Agents grouped by time on the team: tenured, or new hires who joined in W1."],
   ["Huddle", "The short team meeting held each week."],
   ["90-day status", "Whether a hire was still on the team 90 days after joining."],
+  ["Bridge targets", "Lower targets new hires work towards during their first months, before full targets apply."],
+  ["KB", "Knowledge base: the program's articles on products and processes."],
 ];
 
 /** Mini trend line. Pass a fixed `domain` when comparing rows, so small wobbles stay small. */
@@ -173,7 +184,45 @@ function Tile({ label, value, sub, spark, domain }: { label: string; value: stri
 const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
 const fmt1 = (n: number) => (Math.round(n * 10) / 10).toString();
 
-export function Dashboard({ data }: { data: DashboardData }) {
+function initials(name: string) {
+  return name.slice(0, 2).toUpperCase();
+}
+
+function FlagCard({ flag, profile }: { flag: CoachingFlag; profile?: AgentProfile }) {
+  return (
+    <section className="card border-l-4 border-l-brand-magenta">
+      <p className="eyebrow">This week&apos;s coaching flag</p>
+      <div className="mt-2 grid gap-5 lg:grid-cols-[260px_1fr]">
+        <div className="rounded-card bg-[linear-gradient(160deg,var(--color-brand-indigo-soft),var(--color-brand-indigo-deep))] p-5 text-white">
+          <span className="grid size-14 place-items-center rounded-full bg-white/15 text-lg font-extrabold ring-2 ring-white/30">{initials(flag.agent)}</span>
+          <p className="mt-3 text-xl font-extrabold">{flag.agent}</p>
+          {profile && (
+            <dl className="mt-2 space-y-2 text-sm text-white/85">
+              <div><dt className="text-[11px] font-bold tracking-wide text-white/55 uppercase">Tenure</dt><dd>{profile.tenure}</dd></div>
+              <div><dt className="text-[11px] font-bold tracking-wide text-white/55 uppercase">About</dt><dd>{profile.about}</dd></div>
+              <div><dt className="text-[11px] font-bold tracking-wide text-white/55 uppercase">Interests</dt><dd>{profile.interests}</dd></div>
+              <div><dt className="text-[11px] font-bold tracking-wide text-white/55 uppercase">Coaching preference</dt><dd>{profile.coaching}</dd></div>
+            </dl>
+          )}
+        </div>
+        <div>
+          <h3 className="text-lg font-extrabold">{flag.public.headline}</h3>
+          <p className="mt-1 text-sm text-brand-gray">From this month&apos;s data and call monitoring. This would be your first coaching session with {flag.agent} this month.</p>
+          <ul className="mt-3 space-y-2 text-[15px]">
+            {flag.public.observations.map((o) => (
+              <li key={o} className={/^[a-z]\)/.test(o) ? "ml-6 text-ink-soft" : "flex gap-2"}>
+                {!/^[a-z]\)/.test(o) && <span className="text-brand-magenta">●</span>}
+                <span>{o}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function Dashboard({ data, flag }: { data: DashboardData; flag?: CoachingFlag | null }) {
   const p = data.primary;
   const last = data.weeks[data.weeks.length - 1];
   const days = WEEKDAYS.filter((d) => d in data.shrinkage.byDay);
@@ -203,13 +252,15 @@ export function Dashboard({ data }: { data: DashboardData }) {
         </span>
         <h2 className="mt-3 text-2xl font-extrabold tracking-tight">{data.team} performance dashboard</h2>
         <div className="mt-3 flex flex-wrap gap-2 text-sm">
-          {[data.channel, "Telecom client", `${data.headcount} agents`, `Team Manager: ${data.manager}`, `${data.weeks[0]}–${last} (six weeks)`].map((c) => (
+          {[data.channel, "Telecom client", `${data.headcount} agents`, "Team Manager: you", `${data.weeks[0]}–${last} (six weeks)`].map((c) => (
             <span key={c} className="rounded-full bg-white/10 px-3 py-1 font-semibold ring-1 ring-white/15">
               {c}
             </span>
           ))}
         </div>
       </section>
+
+      {flag && <FlagCard flag={flag} profile={data.profiles?.find((p) => p.name === flag.agent)} />}
 
       {/* Snapshot */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -289,7 +340,7 @@ export function Dashboard({ data }: { data: DashboardData }) {
       </Panel>
 
       {/* Agent table */}
-      <Panel title="Agents" what={data.agentTable.note}>
+      <Panel title="Agents" what={`${data.agentTable.note}${data.bridge ? ` ${data.bridge}` : ""}`}>
         <div className="overflow-x-auto">
           <table className="table">
             <thead>
@@ -455,6 +506,27 @@ export function Dashboard({ data }: { data: DashboardData }) {
           </table>
         </Panel>
       </div>
+
+      {data.profiles && data.profiles.length > 0 && (
+        <Panel title="Meet your team" what="Who your agents are and how each of them likes to be coached.">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {data.profiles.map((p) => (
+              <div key={p.name} className={`rounded-card border p-4 ${flag?.agent === p.name ? "border-brand-magenta/50 bg-brand-magenta/5" : "border-line bg-canvas"}`}>
+                <div className="flex items-center gap-3">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-indigo text-sm font-extrabold text-white">{initials(p.name)}</span>
+                  <div>
+                    <p className="font-extrabold">{p.name}</p>
+                    <p className="text-xs text-brand-gray">{p.tenure}</p>
+                  </div>
+                </div>
+                <p className="mt-3 text-sm">{p.about}</p>
+                <p className="mt-2 text-xs text-ink-soft"><strong>Interests:</strong> {p.interests}</p>
+                <p className="mt-1 text-xs text-ink-soft"><strong>Coaching preference:</strong> {p.coaching}</p>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      )}
 
       <details className="card">
         <summary className="cursor-pointer font-extrabold">Glossary: what the metrics mean</summary>

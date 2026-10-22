@@ -151,7 +151,7 @@ export default async function FacilitatorHome() {
                 </div>
                 {s && s.try_no > 1 && <p className="badge self-start border-warn/30 bg-warn-bg text-warn">Reassessment · try {s.try_no}</p>}
                 {m === 1 && (
-                  <p className="text-sm text-ink-soft">Read a team&apos;s dashboard, write a short readout, then coach the Team Manager live.</p>
+                  <p className="text-sm text-ink-soft">Play the Team Manager: review your team, choose an agent, prepare, coach them live and document it, using the coaching cycle.</p>
                 )}
                 {m === 2 && (
                   <p className="text-sm text-ink-soft">Watch a recorded TM conversation, tag key moments and write a structured debrief.</p>
@@ -160,7 +160,7 @@ export default async function FacilitatorHome() {
                   <p className="text-sm text-ink-soft">Deliver a TMU section to your cohort peers, including a practice activity of at least 5 minutes.</p>
                 )}
                 <div className="flex flex-wrap gap-1.5">
-                  {(m === 1 ? ["15 min review", "5 min readout", "20 min coaching"] : m === 2 ? ["10 min video", "25 min debrief"] : ["15–20 min live"]).map((t) => (
+                  {(m === 1 ? ["15 min review", "10 min prep", "20 min coaching", "10 min form"] : m === 2 ? ["10 min video", "25 min debrief"] : ["15–20 min live"]).map((t) => (
                     <span key={t} className="badge">{t}</span>
                   ))}
                 </div>
@@ -238,21 +238,34 @@ function nextStep({
   fmt: (iso: string | null) => string | null;
 }): { title: string; body: string; cta?: string; href?: string } | null {
   if (!consented) return null;
+  if (m1 && (m1.phase === "documentation" || (m1.phase === "coaching" && m1.session_at && new Date(m1.session_at) <= new Date()))) {
+    return {
+      title: m1.phase === "documentation" ? "Finish your coaching form" : `Document your session with ${m1.readout.agent || "your agent"}`,
+      body: "Coaching cycle stages 3 and 4: Start / Stop / Continue, a SMART action plan and your follow-through plan. It's timed at 10 minutes.",
+      cta: "Open the coaching form",
+      href: `/facilitator/module/${m1.id}`,
+    };
+  }
   if (m1 && (m1.status === "assigned" || m1.status === "in_progress") && m1.phase !== "coaching") {
     return {
       title: m1.status === "assigned" ? "Start Module 1: Capability Demonstration" : "Continue Module 1",
-      body: "You'll read the team's dashboard (15 min), write a short readout (5 min), then coach the Team Manager live. The timer starts when you open the dashboard.",
+      body: "As the Team Manager, you'll review your team and choose an agent (15 min), prepare the session (10 min), coach them live, then document it. The timer starts when you open the dashboard.",
       cta: m1.status === "assigned" ? "Start Module 1" : "Continue Module 1",
       href: `/facilitator/module/${m1.id}`,
     };
   }
   if (m1 && !m1Passed && m1.result !== "not_passed") {
     return {
-      title: "Next: your live coaching session",
-      body: m1.session_at
-        ? `Your readout is in. Join the coaching session with Alex on ${fmt(m1.session_at)}. Your result appears here after grading.`
-        : "Your readout is in. Your certifier will schedule the live coaching session with Alex; the time will appear here.",
-      cta: "Review the dashboard",
+      title: m1.phase === "documented" ? "Module 1 is with your certifier" : m1.phase === "documentation" ? "Finish your coaching form" : "Next: your live coaching session",
+      body:
+        m1.phase === "documented"
+          ? "Your coaching form is in. Your result appears here after grading."
+          : m1.phase === "documentation"
+            ? "Your 10-minute coaching form is open. Complete it before the timer runs out."
+            : m1.session_at
+              ? `Your preparation is in. Your live session with ${m1.readout.agent || "your agent"} is on ${fmt(m1.session_at)}. Afterwards, document it on the coaching form.`
+              : `Your preparation is in. Your certifier will schedule the live session with ${m1.readout.agent || "your agent"}; the time will appear here.`,
+      cta: m1.phase === "documentation" ? "Open the coaching form" : "Open Module 1",
       href: `/facilitator/module/${m1.id}`,
     };
   }

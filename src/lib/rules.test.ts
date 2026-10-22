@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calibrationDiff, computeOutcome, evaluateModule, maxLevel, readoutTotal, tallyAnswerKey } from "./rules";
+import { calibrationDiff, computeOutcome, DOC_RUBRIC, evaluateModule, maxLevel, PREP_RUBRIC, rubricTotal, tallyAnswerKey } from "./rules";
 
 const keyA = [
   { id: "A1", kind: "effective" as const },
@@ -81,9 +81,10 @@ describe("computeOutcome", () => {
 });
 
 describe("readout and calibration", () => {
-  it("readout below 3 is a development area", () => {
-    expect(readoutTotal({ observations: 1, hypothesis: 0, questions: 1 })).toEqual({ total: 2, complete: true, developmentArea: true });
-    expect(readoutTotal({ observations: 2 }).complete).toBe(false);
+  it("preparation below half marks is a development area", () => {
+    expect(rubricTotal({ choice: 1, observations: 1, root_cause: 0, adaptation: 1 }, PREP_RUBRIC)).toEqual({ total: 3, max: 8, complete: true, developmentArea: true });
+    expect(rubricTotal({ choice: 2, observations: 2, root_cause: 1, adaptation: 1 }, PREP_RUBRIC).developmentArea).toBe(false);
+    expect(rubricTotal({ ssc: 2 }, DOC_RUBRIC).complete).toBe(false);
   });
   it("calibration diff by dimension", () => {
     expect(calibrationDiff({ 1: 3, 3: 2 }, { 1: 4, 3: 2 })).toEqual([

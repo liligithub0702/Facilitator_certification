@@ -52,13 +52,23 @@ select pg_temp.expect((select count(*) from module_submissions) = 2, 'facilitato
 select pg_temp.expect_error($$select start_module((select v from ctx where k = 'm1'))$$, 'start without consent');
 select accept_consent((select v from ctx where k = 'attempt'));
 select pg_temp.expect_error($$select start_module((select v from ctx where k = 'm2'))$$, 'Module 2 gate');
+select pg_temp.expect(case_brief((select v from ctx where k = 'm1')) is null, 'case flag hidden before Module 1 starts');
 select pg_temp.expect((select phase from start_module((select v from ctx where k = 'm1'))) = 'dashboard', 'Module 1 starts on dashboard');
+select pg_temp.expect(case_brief((select v from ctx where k = 'm1')) ->> 'agent' = 'Jordan', 'case flag visible after start');
+select pg_temp.expect(case_brief((select v from ctx where k = 'm1')) -> 'hidden' is null, 'case flag excludes the role-play brief');
 select pg_temp.expect((select count(*) from dashboards) = 1, 'assigned dashboard visible after start');
 select pg_temp.expect((select readout = '{}' from save_response((select v from ctx where k = 'm1'), '{"observations":"x"}')), 'readout not writable during dashboard phase');
 select pg_temp.expect((select phase from advance_phase((select v from ctx where k = 'm1'))) = 'readout', 'advance to readout');
 select pg_temp.expect((select status from save_response((select v from ctx where k = 'm1'), '{"observations":"trend"}', true)) = 'submitted', 'readout submits');
 select pg_temp.expect((select readout->>'observations' from save_response((select v from ctx where k = 'm1'), '{"observations":"changed"}', true)) = 'trend', 'readout locked after submit');
 select pg_temp.expect_error($$update module_submissions set readout = '{}' where id = (select v from ctx where k = 'm1')$$, 'direct update of readout');
+select pg_temp.expect_error($$select advance_phase((select v from ctx where k = 'm1'))$$, 'coaching form closed before the live session');
+reset role;
+update module_submissions set session_at = now() - interval '1 minute' where id = (select v from ctx where k = 'm1');
+set local role authenticated;
+set local request.jwt.claim.sub = '44444444-4444-4444-4444-444444444441';
+select pg_temp.expect((select phase from advance_phase((select v from ctx where k = 'm1'))) = 'documentation', 'coaching form opens after the session starts');
+select pg_temp.expect((select phase from save_response((select v from ctx where k = 'm1'), '{"start":"x"}', true)) = 'documented', 'coaching form submits');
 update module_submissions set result = 'passed' where id = (select v from ctx where k = 'm1');
 select pg_temp.expect((select result is null from module_submissions where id = (select v from ctx where k = 'm1')), 'facilitator cannot set own result');
 select pg_temp.expect_error($$select * from leader_overview()$$, 'facilitator cannot call leader_overview');
@@ -89,6 +99,7 @@ select pg_temp.expect((select count(*) from gradings) = 0, 'facilitator cannot s
 
 -- ---------------- Other facilitator ----------------
 set local request.jwt.claim.sub = '44444444-4444-4444-4444-444444444442';
+select pg_temp.expect(case_brief((select v from ctx where k = 'm1')) is null, 'peer cannot see another case flag');
 select pg_temp.expect((select count(*) from module_submissions) = 0, 'peer cannot see other submissions');
 select pg_temp.expect((select count(*) from tags) = 0, 'peer cannot see other tags');
 select pg_temp.expect_error($$select save_response((select v from ctx where k = 'm2'), '{}')$$, 'peer cannot write others');

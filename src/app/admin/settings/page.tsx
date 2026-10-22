@@ -39,7 +39,7 @@ export default async function SettingsPage() {
             <textarea name="briefing_B" defaultValue={context.briefing_B} className="input min-h-56" />
           </label>
         </div>
-        <p className="muted">Shown before Module 1 starts and above the dashboard. Don&apos;t reveal the case: Alex&apos;s situation must stay unknown until the live session.</p>
+        <p className="muted">Shown before Module 1 starts and above the dashboard. Keep it general: the flagged agent and their observations come from each facilitator&apos;s case, so cases stay different within a cohort.</p>
         <button className="btn btn-primary">Save text</button>
       </form>
 
@@ -59,7 +59,8 @@ export default async function SettingsPage() {
       <form action={saveTimers} className="card grid gap-3 sm:grid-cols-3">
         <h2 className="h2 sm:col-span-3">Timers</h2>
         <label><span className="label">Module 1 dashboard review (min)</span><input name="m1_dashboard_min" type="number" defaultValue={(t.m1_dashboard_sec ?? 900) / 60} className="input" /></label>
-        <label><span className="label">Module 1 readout (min)</span><input name="m1_readout_min" type="number" defaultValue={(t.m1_readout_sec ?? 300) / 60} className="input" /></label>
+        <label><span className="label">Module 1 preparation (min)</span><input name="m1_readout_min" type="number" defaultValue={(t.m1_readout_sec ?? 600) / 60} className="input" /></label>
+        <label><span className="label">Module 1 coaching form (min)</span><input name="m1_doc_min" type="number" defaultValue={(t.m1_doc_sec ?? 600) / 60} className="input" /></label>
         <label><span className="label">Module 2 debrief (min)</span><input name="m2_debrief_min" type="number" defaultValue={(t.m2_debrief_sec ?? 1500) / 60} className="input" /></label>
         <label><span className="label">Module 2 plays (1 view + replays)</span><input name="m2_max_plays" type="number" defaultValue={t.m2_max_plays ?? 2} className="input" /></label>
         <label><span className="label">Network grace after a deadline (sec)</span><input name="grace_sec" type="number" defaultValue={t.grace_sec ?? 10} className="input" /></label>

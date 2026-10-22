@@ -3,16 +3,17 @@ import { notFound } from "next/navigation";
 import { StatusBadge } from "@/components/AppShell";
 import { requireRole } from "@/lib/auth";
 import { calibrationDiff, MODULE_NAMES, RED_FLAGS, type ModuleNo } from "@/lib/rules";
-import { READOUT_FIELDS, type AnswerKeyItem, type Dimension, type Scenario, type Submission, type Tag } from "@/lib/types";
+import { COACHING_FORM_FIELDS, READOUT_FIELDS, type AnswerKeyItem, type Dimension, type Scenario, type Submission, type Tag } from "@/lib/types";
 import { Debrief } from "@/app/facilitator/module/[id]/Debrief";
 import { addRecording, removeRecording, setSession } from "../../actions";
 import { ScorecardForm } from "./ScorecardForm";
 import { SessionInput } from "./SessionInput";
 
 type Brief = {
-  opening?: string;
-  position?: string;
-  key_fact?: string;
+  agent?: string;
+  archetype?: string;
+  public?: { headline: string; observations: string[] };
+  hidden?: string;
   unlock?: string;
   twists?: { minute: number; line: string; tests: string }[];
   good?: string[];
@@ -27,6 +28,7 @@ type GradingRow = {
   is_calibration: boolean;
   submitted_at: string | null;
   readout_scores: Record<string, number>;
+  checklist: { conversation?: string[]; funnel?: string[] } | null;
   answer_key_hits: string[];
   profiles: { full_name: string | null; email: string } | null;
   scores: { dimension_id: number; level: number; evidence: string | null }[];
@@ -56,7 +58,7 @@ export default async function GradeSubmission({ params }: PageProps<"/grader/sub
       supabase.from("recordings").select("id, url, label, created_at").eq("submission_id", id).order("created_at"),
       supabase
         .from("gradings")
-        .select("id, grader_id, is_calibration, submitted_at, readout_scores, answer_key_hits, profiles(full_name, email), scores(dimension_id, level, evidence), red_flags(code)")
+        .select("id, grader_id, is_calibration, submitted_at, readout_scores, checklist, answer_key_hits, profiles(full_name, email), scores(dimension_id, level, evidence), red_flags(code)")
         .eq("submission_id", id)
         .returns<GradingRow[]>(),
       s.section_id ? supabase.from("sections").select("title").eq("id", s.section_id).single() : Promise.resolve({ data: null }),
@@ -99,14 +101,47 @@ export default async function GradeSubmission({ params }: PageProps<"/grader/sub
         {/* Evidence */}
         <div className="space-y-4">
           {mod === 1 && (
-            <section className="card space-y-2">
-              <h2 className="h2">Readout</h2>
-              <dl className="space-y-2 text-sm">
-                {READOUT_FIELDS.map((f) => (
-                  <div key={f.key}><dt className="font-medium">{f.label}</dt><dd className="whitespace-pre-wrap">{s.readout[f.key] || "—"}</dd></div>
-                ))}
-              </dl>
-            </section>
+            <>
+              <section className="card space-y-3">
+                <p className="eyebrow">Who they chose to coach</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-2xl font-extrabold">{s.readout.agent || "Not chosen yet"}</span>
+                  {s.readout.agent && brief.agent && (
+                    s.readout.agent === brief.agent ? (
+                      <span className="badge border-ok/30 bg-ok-bg text-ok">the flagged agent</span>
+                    ) : (
+                      <span className="badge border-warn/30 bg-warn-bg text-warn">not the flagged agent ({brief.agent})</span>
+                    )
+                  )}
+                </div>
+                {s.readout.agent && brief.agent && s.readout.agent !== brief.agent && (
+                  <p className="text-sm text-ink-soft">
+                    Role-play {s.readout.agent} as a solid performer who is surprised to be picked (“Why me?”). Score the choice and
+                    rationale under Preparation.
+                  </p>
+                )}
+              </section>
+              <section className="card space-y-2">
+                <h2 className="h2">Preparation</h2>
+                <dl className="space-y-2 text-sm">
+                  {READOUT_FIELDS.filter((f) => f.key !== "agent").map((f) => (
+                    <div key={f.key}><dt className="font-medium">{f.label}</dt><dd className="whitespace-pre-wrap">{s.readout[f.key] || "—"}</dd></div>
+                  ))}
+                </dl>
+              </section>
+              <section className="card space-y-2">
+                <h2 className="h2">Coaching form</h2>
+                {s.phase === "documented" || Object.keys(s.debrief ?? {}).length ? (
+                  <dl className="space-y-2 text-sm">
+                    {COACHING_FORM_FIELDS.map((f) => (
+                      <div key={f.key}><dt className="font-medium">{f.label}</dt><dd className="whitespace-pre-wrap">{s.debrief[f.key] || "—"}</dd></div>
+                    ))}
+                  </dl>
+                ) : (
+                  <p className="muted">Written by the facilitator after the live session. It opens for them once the session time you set below has passed.</p>
+                )}
+              </section>
+            </>
           )}
           {mod === 2 && (
             <section className="card space-y-2">
@@ -153,15 +188,21 @@ export default async function GradeSubmission({ params }: PageProps<"/grader/sub
 
           {scenario && mod === 1 && (
             <details className="card text-sm" open>
-              <summary className="cursor-pointer font-semibold">Role-player brief (grader-only)</summary>
+              <summary className="cursor-pointer font-semibold">Role-play brief: you play {brief.agent} (grader-only)</summary>
               {brief.draft && <p className="mt-2 text-warn">{brief.draft}</p>}
-              <div className="mt-2 space-y-2">
-                <p><strong>Alex opens with:</strong> {brief.opening}</p>
-                <p><strong>Position:</strong> {brief.position}</p>
-                <p><strong>Key fact:</strong> {brief.key_fact}</p>
-                <p><strong>Unlock when:</strong> {brief.unlock}</p>
+              <div className="mt-3 space-y-3">
+                {brief.archetype && <p><strong>Scenario:</strong> {brief.archetype}. This is the facilitator&apos;s first coaching session with {brief.agent} this month.</p>}
+                {brief.public && (
+                  <div className="rounded-chip bg-canvas p-3">
+                    <p className="font-medium">What the facilitator was shown</p>
+                    <p className="mt-1">{brief.public.headline}</p>
+                    <ul className="mt-1 list-disc pl-5">{brief.public.observations.map((o) => <li key={o}>{o}</li>)}</ul>
+                  </div>
+                )}
+                <p><strong>What {brief.agent} knows but won&apos;t volunteer:</strong> {brief.hidden}</p>
+                <p><strong>Reveal it only when:</strong> {brief.unlock} Closed or leading questions don&apos;t unlock it.</p>
                 <table className="table">
-                  <thead><tr><th>Minute</th><th>Alex says (word for word)</th><th>Tests</th></tr></thead>
+                  <thead><tr><th>Minute</th><th>{brief.agent} says (word for word)</th><th>Tests</th></tr></thead>
                   <tbody>{brief.twists?.map((t) => <tr key={t.minute}><td>{t.minute}</td><td>{t.line}</td><td>{t.tests}</td></tr>)}</tbody>
                 </table>
                 <p className="font-medium">What good looks like</p>
@@ -188,6 +229,7 @@ export default async function GradeSubmission({ params }: PageProps<"/grader/sub
             initial={{
               scores: Object.fromEntries((mine?.scores ?? []).map((x) => [x.dimension_id, { level: x.level, evidence: x.evidence ?? "" }])),
               readout: mine?.readout_scores ?? {},
+              checklist: { conversation: mine?.checklist?.conversation ?? [], funnel: mine?.checklist?.funnel ?? [] },
               hits: mine?.answer_key_hits ?? [],
               redFlags: (mine?.red_flags ?? []).map((f) => f.code).filter((c) => c !== "m2_missed_critical"),
               submit: false,

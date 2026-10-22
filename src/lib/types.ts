@@ -104,19 +104,32 @@ export type ExecSummaryContent = {
   next_step: SummaryItem;
 };
 
-export const READOUT_FIELDS = [
-  { key: "observation_1", label: "Observation 1" },
-  { key: "observation_2", label: "Observation 2" },
-  { key: "observation_3", label: "Observation 3" },
-  { key: "hypothesis", label: "Hypothesis" },
-  { key: "question_1", label: "Question for the Team Manager 1" },
-  { key: "question_2", label: "Question for the Team Manager 2" },
-] as const;
+export type FormField = { key: string; label: string; hint?: string; kind?: "agent" };
 
-export const DEBRIEF_FIELDS = [
+/** Module 1, step 2: Preparation (coaching cycle stage 1). Stored in module_submissions.readout. */
+export const READOUT_FIELDS: readonly FormField[] = [
+  { key: "agent", label: "Who will you coach first?", kind: "agent" },
+  { key: "why", label: "Why this agent, and why now?", hint: "Point to the data and notes that made you choose." },
+  { key: "observations", label: "Key observations", hint: "What the data and call notes show about this agent: strengths as well as gaps." },
+  { key: "root_cause", label: "Likely root cause(s) to explore", hint: "Hypotheses to test with the agent, not conclusions." },
+  { key: "adapt", label: "How you'll adapt to this agent", hint: "Their profile, tenure and how they like to be coached." },
+  { key: "opening", label: "Your opening", hint: "How you'll start the conversation and build rapport." },
+];
+
+/** Module 1, step 4: Documentation and follow-through (coaching cycle stages 3–4). Stored in debrief. */
+export const COACHING_FORM_FIELDS: readonly FormField[] = [
+  { key: "start", label: "Start", hint: "What the agent agreed to start doing." },
+  { key: "stop", label: "Stop", hint: "What the agent agreed to stop doing." },
+  { key: "continue", label: "Continue", hint: "What's working that the agent should keep doing." },
+  { key: "action_plan", label: "SMART action plan", hint: "Specific, measurable, owned by the agent, with a date." },
+  { key: "follow_up", label: "Follow-through plan", hint: "When you'll check in, and how you'll observe, validate and recognise progress." },
+  { key: "commitment", label: "The agent's commitment", hint: "In their words, as agreed in the session." },
+];
+
+export const DEBRIEF_FIELDS: readonly FormField[] = [
   { key: "observed", label: "What you observed" },
   { key: "effective", label: "What was effective, and why" },
   { key: "missed", label: "What was missed, and its likely impact" },
   { key: "feedback", label: "The feedback you would give the Team Manager, in your own words" },
   { key: "coach_differently", label: "What you would coach differently" },
-] as const;
+];

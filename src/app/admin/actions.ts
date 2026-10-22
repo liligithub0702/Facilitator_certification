@@ -297,6 +297,7 @@ export async function saveTimers(formData: FormData) {
     value: {
       m1_dashboard_sec: n("m1_dashboard_min", 1, 60) * 60,
       m1_readout_sec: n("m1_readout_min", 1, 30) * 60,
+      m1_doc_sec: n("m1_doc_min", 1, 30) * 60,
       m2_debrief_sec: n("m2_debrief_min", 1, 90) * 60,
       grace_sec: n("grace_sec", 0, 120),
       m2_max_plays: n("m2_max_plays", 1, 5),

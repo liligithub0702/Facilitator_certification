@@ -970,3 +970,173 @@ create trigger before_auth_user_created
 
 revoke execute on function public.check_signup_domain() from public, anon, authenticated;
 
+-- ===== 20261023000006_agent_coaching.sql =====
+-- Module 1 redesign: the facilitator plays the Team Manager and runs a first coaching session
+-- with one agent, following the Sutherland coaching cycle (TMU Elevate: Coaching to Drive Performance).
+-- Each case flags one agent (rotation still keeps cases unique within a cohort week).
+
+update public.dashboards set data = data || jsonb_build_object('profiles', '[{"name": "Maya", "tenure": "2 years", "about": "Consistently one of the team''s strongest agents. Proud of being the person colleagues go to with tricky calls. Studying for a team leader certificate in the evenings.", "interests": "Running, podcasts", "coaching": "Prefers self-discovery: wants to be asked, not told."}, {"name": "Ravi", "tenure": "3 years", "about": "Became the team''s SME in W3. Calm and methodical; enjoys helping new hires.", "interests": "Chess", "coaching": "Likes data and clear targets."}, {"name": "Leo", "tenure": "1.5 years", "about": "Quiet and reliable on calls. Lives on the edge of the city and commutes by night bus on late shifts.", "interests": "Gaming, football", "coaching": "Prefers short, direct one-to-ones."}, {"name": "Nina", "tenure": "1 year", "about": "Warm with customers and well liked by the team. Shares a car with a neighbour for late shifts.", "interests": "Baking", "coaching": "Learns best with a peer."}, {"name": "Ana", "tenure": "2 years", "about": "Steady performer who rarely needs support.", "interests": "Travel, photography", "coaching": "Likes written feedback she can refer back to."}, {"name": "Ben", "tenure": "4 years", "about": "The longest-serving agent on the team. Confident, knows the products inside out and helps new hires informally.", "interests": "Fishing", "coaching": "Learns best through mock calls; dislikes being lectured."}, {"name": "Carla", "tenure": "1 year", "about": "Energetic; volunteers for team activities.", "interests": "Dance", "coaching": "Learns through role-play."}, {"name": "Dev", "tenure": "2.5 years", "about": "Detail-oriented; good with billing disputes.", "interests": "Cricket", "coaching": "Likes data and call examples."}, {"name": "Elena", "tenure": "3 years", "about": "Experienced and patient; often handles escalations.", "interests": "Gardening", "coaching": "Prefers self-discovery."}, {"name": "Farid", "tenure": "1 year", "about": "Fast learner, keen to move into a quality role.", "interests": "Cycling", "coaching": "Likes clear targets and recognition."}, {"name": "Grace", "tenure": "2 years", "about": "Consistent and calm under pressure.", "interests": "Reading", "coaching": "Likes written action plans."}, {"name": "Jordan", "tenure": "6 weeks (new hire)", "about": "First contact-centre job. Polite and patient with customers; nervous but eager to do well.", "interests": "Plays the guitar", "coaching": "Learns best through shadowing and demonstrations; likes direct feedback during sessions."}, {"name": "Kim", "tenure": "6 weeks (new hire)", "about": "Previously worked in retail. Confident on the phone.", "interests": "Hiking", "coaching": "Learns by doing."}, {"name": "Omar", "tenure": "6 weeks (new hire)", "about": "Studying IT part-time. Quick with systems.", "interests": "Basketball", "coaching": "Likes step-by-step guides."}]'::jsonb, 'bridge', 'Bridge targets for new hires in month 2: AHT 480 s or less, QA 80% or more.') where version = 'A';
+update public.dashboards set data = data || jsonb_build_object('profiles', '[{"name": "Lina", "tenure": "2 years", "about": "Consistently one of the team''s strongest agents. Proud of being the person colleagues go to with tricky chats. Studying for a team leader certificate in the evenings.", "interests": "Running, podcasts", "coaching": "Prefers self-discovery: wants to be asked, not told."}, {"name": "Wei", "tenure": "3 years", "about": "Became the team''s SME in W3. Calm and methodical; enjoys helping new hires.", "interests": "Chess", "coaching": "Likes data and clear targets."}, {"name": "Tariq", "tenure": "1.5 years", "about": "Quiet and reliable on chats. Lives on the edge of the city and travels in by the first bus on early shifts.", "interests": "Gaming, football", "coaching": "Prefers short, direct one-to-ones."}, {"name": "Joy", "tenure": "1 year", "about": "Warm with customers and well liked by the team.", "interests": "Baking", "coaching": "Learns best with a peer."}, {"name": "Marco", "tenure": "2 years", "about": "Steady performer who rarely needs support.", "interests": "Travel, photography", "coaching": "Likes written feedback he can refer back to."}, {"name": "Aisha", "tenure": "4 years", "about": "The longest-serving agent on the team. Confident, knows the products inside out and helps new hires informally.", "interests": "Gardening, Instagram", "coaching": "Learns best through mock chats; dislikes being lectured."}, {"name": "Pedro", "tenure": "1 year", "about": "Energetic; volunteers for team activities.", "interests": "Dance", "coaching": "Learns through role-play."}, {"name": "Sara", "tenure": "2.5 years", "about": "Detail-oriented; good with billing disputes.", "interests": "Cricket", "coaching": "Likes data and chat examples."}, {"name": "Ken", "tenure": "3 years", "about": "Experienced and patient; often handles escalations.", "interests": "Cooking", "coaching": "Prefers self-discovery."}, {"name": "Lucia", "tenure": "1 year", "about": "Fast learner, keen to move into a quality role.", "interests": "Cycling", "coaching": "Likes clear targets and recognition."}, {"name": "Noor", "tenure": "2 years", "about": "Consistent and calm under pressure.", "interests": "Reading", "coaching": "Likes written action plans."}, {"name": "Ali", "tenure": "6 weeks (new hire)", "about": "First contact-centre job. Polite and patient with customers; nervous but eager to do well.", "interests": "Plays the guitar", "coaching": "Learns best through shadowing and demonstrations; likes direct feedback during sessions."}, {"name": "Bea", "tenure": "6 weeks (new hire)", "about": "Previously worked in retail. Confident with customers.", "interests": "Hiking", "coaching": "Learns by doing."}, {"name": "Chen", "tenure": "6 weeks (new hire)", "about": "Studying IT part-time. Quick with systems.", "interests": "Basketball", "coaching": "Likes step-by-step guides."}]'::jsonb, 'bridge', 'Bridge targets for new hires in month 2: repeat contacts 14% or less, QA 80% or more.') where version = 'B';
+
+update public.scenarios set title = 'Case 1: New joiner below bridge targets (Jordan)', brief = '{"agent": "Jordan", "archetype": "Coach a new team member to meet their bridge KPIs", "public": {"headline": "Jordan is not yet meeting the bridge targets for new hires.", "observations": ["Jordan has been on the production floor for 6 weeks (joined W1).", "Jordan is polite and patient on calls; two customers thanked him by name in surveys this month.", "Jordan''s AHT was 505 s in W6 against a bridge target of 480 s. QA is 83% (bridge target 80%).", "In the last four calls you monitored:", "a) In 2 of 4 calls Jordan put the customer on hold for more than two minutes while searching the knowledge base (KB) for plan details.", "b) In 2 of 4 calls the new verification step timed out and Jordan restarted it from the beginning.", "c) In 1 call Jordan skipped the closing summary; the customer called back the same day with the same question."]}, "hidden": "Jordan was never shown the KB quick-reference for plans during nesting and searches the full KB instead. Tenured agents re-send the verification code when the screen times out; nobody told Jordan. He thinks he has been called in because he is about to be let go.", "unlock": "An open question about what happens during the holds, or what feels hardest on a call right now.", "twists": [{"minute": 8, "line": "“Kim and Omar are just as slow. Why am I the only one here?”", "tests": "Explains the purpose of the session with data, without comparing agents"}, {"minute": 14, "line": "“Honestly, I thought you called me in to let me go.”", "tests": "Builds trust and reframes the session as support"}], "good": ["Builds rapport first: Jordan is new and nervous.", "Recognises what is working (soft skills, QA above bridge) before the gaps.", "Separates the team-wide AHT rise from Jordan''s own gaps (long KB holds, verification restarts).", "Agrees the root causes with Jordan rather than announcing them.", "Plans to Jordan''s learning style: side-by-side or shadowing with Ravi (SME), a demo of the KB quick-reference.", "SMART plan with a follow-up date (e.g. AHT at or below 480 s by W8, check-in next week)."], "red_flags": ["Tells Jordan the solution in the first 5 minutes", "Treats the team-wide AHT rise as Jordan''s fault", "Ends without an agreed action or follow-up"], "cycle": {"conversation": ["Build rapport", "Listen, question, connect", "Agree on the root causes (RCAs)", "Build the action plan", "Start / Stop / Continue", "Gain commitment"], "funnel": ["Opening the conversation", "Probing further", "Finding the root cause", "Creating an action plan", "Offering help", "Gaining commitment", "Debrief and putting it all together"]}}'::jsonb where module = 1 and family = 'case-1' and version = 'A';
+update public.scenarios set title = 'Case 2: Tenured top performer slipping on CSAT and QA (Maya)', brief = '{"agent": "Maya", "archetype": "Coach a tenured member with low scores on the top two program metrics", "public": {"headline": "Maya has missed her CSAT and QA targets for the last two weeks.", "observations": ["Maya has been on the program for 2 years and was the team''s top CSAT performer until W3.", "Maya''s CSAT fell from 4.7 in W3 to 4.1 in W6 (target 4.3). Her last two QA evaluations were 81% and 80% (target 82%).", "Maya missed 2 of the last 3 huddles and keeps her camera off in team meetings.", "In the last four calls you monitored:", "a) In 3 of 4 calls Maya ended the call without asking if there was anything else or offering the retention offer.", "b) In 2 of 4 calls Maya talked over the customer while they were explaining the problem.", "c) Maya still has the lowest AHT on the team (470 s)."]}, "hidden": "Maya applied for the SME role in W3. Ravi got it and nobody explained the decision to her. She feels unrecognised and has started looking at other jobs. She will only open up if she feels listened to.", "unlock": "An open question about how work feels for her lately, or what has changed for her since W3.", "twists": [{"minute": 8, "line": "“My numbers are still better than most of the team.”", "tests": "Acknowledges her strengths and stays on the gap without arguing"}, {"minute": 14, "line": "“I applied for the SME role, you know. Nobody even told me why I didn''t get it.”", "tests": "Responds with empathy and addresses the career question alongside performance"}], "good": ["Opens with genuine rapport and recognition of her track record.", "Uses open and probing questions; lets Maya reach the link between W3 and the drop.", "Treats the career disappointment as a root cause to address, not an excuse.", "Agrees a Start / Stop / Continue (e.g. start: full call closing; stop: talking over customers; continue: efficient handling).", "Commits to a follow-up on the SME decision and a development path, with a date."], "red_flags": ["Lectures Maya on expectations without asking", "Ignores the career disappointment when it surfaces", "Speculates about her private life"], "cycle": {"conversation": ["Build rapport", "Listen, question, connect", "Agree on the root causes (RCAs)", "Build the action plan", "Start / Stop / Continue", "Gain commitment"], "funnel": ["Opening the conversation", "Probing further", "Finding the root cause", "Creating an action plan", "Offering help", "Gaining commitment", "Debrief and putting it all together"]}}'::jsonb where module = 1 and family = 'case-2' and version = 'A';
+update public.scenarios set title = 'Case 3: Tenured agent not following process or using the KB (Ben)', brief = '{"agent": "Ben", "archetype": "Coach a tenured member who does not use available program resources like the KB", "public": {"headline": "Ben received a QA red flag this week for skipping part of the new verification step.", "observations": ["Ben has been on the program for 4 years and new hires often go to him for help.", "QA red-flagged 3 of Ben''s calls this week: the new verification step was not completed (one security question skipped).", "Ben has not opened the KB or the team channel since W4 (team average: 18 KB views a week).", "Two customers called back after Ben changed their plans, because the change used the old process.", "Ben''s AHT (492 s) and CSAT (4.4) are in line with the team."]}, "hidden": "Ben was on leave in W4 and missed the briefing on the new verification step. He believes the KB is out of date, so he stopped checking it. He is proud of his experience and will get defensive if lectured.", "unlock": "A question about how he found out about the new verification step, or what he does when he is unsure of a process.", "twists": [{"minute": 8, "line": "“I''ve done this job for four years. I don''t need the KB.”", "tests": "Respects his experience while keeping the compliance risk on the table"}, {"minute": 14, "line": "“Wait, they changed the step in W4? I was on leave that week.”", "tests": "Integrates new information: shifts from attitude to a missed update"}], "good": ["Acknowledges Ben''s experience and value to new hires.", "Explains the impact of the skipped step (customer security, compliance, repeat calls) factually.", "Discovers the missed W4 briefing through questions rather than assuming attitude.", "Action plan fits Ben''s style: a mock call on the new step, KB check for process changes, maybe asks him to help brief others.", "SMART follow-up: e.g. next 10 calls fully compliant, QA re-check next week."], "red_flags": ["Threatens disciplinary action before exploring the cause", "Just tells Ben to read the KB", "Leaves the compliance risk unaddressed"], "cycle": {"conversation": ["Build rapport", "Listen, question, connect", "Agree on the root causes (RCAs)", "Build the action plan", "Start / Stop / Continue", "Gain commitment"], "funnel": ["Opening the conversation", "Probing further", "Finding the root cause", "Creating an action plan", "Offering help", "Gaining commitment", "Debrief and putting it all together"]}}'::jsonb where module = 1 and family = 'case-3' and version = 'A';
+update public.scenarios set title = 'Spare case: Monday absences (Leo)', brief = '{"agent": "Leo", "archetype": "Coach an agent on an attendance pattern", "public": {"headline": "Leo accounts for 5 of the team''s 13 Monday absences since W2.", "observations": ["Leo has been on the team for 1.5 years and his call quality is solid (QA 88%).", "Leo was absent on 5 Mondays since W2 and logged in late on two more. His attendance is 88% (team 96%).", "Leo works the Sunday late shift, which now ends at 01:00 (changed in W2).", "Leo has not raised any concern with you."]}, "hidden": "Since the Sunday shift moved to 01:00 the last night bus has gone; Leo gets home after 3am and is too exhausted on Mondays. He is embarrassed to mention it.", "unlock": "A question about what changed for him around W2, or what his Sunday nights look like.", "twists": [{"minute": 8, "line": "“I''m here every other day, aren''t I?”", "tests": "Stays factual about the pattern without accusing"}, {"minute": 14, "line": "“Since the shift moved, the last bus has gone by the time we finish.”", "tests": "Integrates new information and looks for a practical solution"}], "good": ["Opens with rapport and recognises his call quality.", "Presents the attendance pattern neutrally and asks before assuming.", "Links the pattern to the W2 shift change through Leo''s own account.", "Agrees a practical plan (shift swap, transport option, escalate to WFM) with a follow-up date."], "red_flags": ["Opens with a warning", "Ignores the transport issue once raised", "No follow-up agreed"], "cycle": {"conversation": ["Build rapport", "Listen, question, connect", "Agree on the root causes (RCAs)", "Build the action plan", "Start / Stop / Continue", "Gain commitment"], "funnel": ["Opening the conversation", "Probing further", "Finding the root cause", "Creating an action plan", "Offering help", "Gaining commitment", "Debrief and putting it all together"]}}'::jsonb where module = 1 and family = 'spare' and version = 'A';
+update public.scenarios set title = 'Case 1: New joiner below bridge targets (Ali) · Team 12', brief = '{"agent": "Ali", "archetype": "Coach a new team member to meet their bridge KPIs", "public": {"headline": "Ali is not yet meeting the bridge targets for new hires.", "observations": ["Ali has been on the production floor for 6 weeks (joined W1).", "Ali is polite and patient on chats; two customers thanked him by name in surveys this month.", "Ali''s repeat contact rate was 15.2% in W6 against a bridge target of 14%. QA is 83% (bridge target 80%).", "In the last four chats you monitored:", "a) In 2 of 4 chats Ali put the customer on hold for more than two minutes while searching the knowledge base (KB) for refund rules.", "b) In 2 of 4 chats the new refund-approval step timed out and Ali restarted it from the beginning.", "c) In 1 chat Ali skipped the closing summary; the customer called back the same day with the same question."]}, "hidden": "Ali was never shown the KB quick-reference for refunds during nesting and searches the full KB instead. Tenured agents re-send the approval request when the screen times out; nobody told Ali. He thinks he has been called in because he is about to be let go.", "unlock": "An open question about what happens during the holds, or what feels hardest on a chat right now.", "twists": [{"minute": 8, "line": "“Bea and Chen are just as slow. Why am I the only one here?”", "tests": "Explains the purpose of the session with data, without comparing agents"}, {"minute": 14, "line": "“Honestly, I thought you called me in to let me go.”", "tests": "Builds trust and reframes the session as support"}], "good": ["Builds rapport first: Ali is new and nervous.", "Recognises what is working (soft skills, QA above bridge) before the gaps.", "Separates the team-wide rise in repeat contacts from Ali''s own gaps (long KB holds, verification restarts).", "Agrees the root causes with Ali rather than announcing them.", "Plans to Ali''s learning style: side-by-side or shadowing with Wei (SME), a demo of the KB quick-reference.", "SMART plan with a follow-up date (e.g. repeat contacts at or below 14% by W8, check-in next week)."], "red_flags": ["Tells Ali the solution in the first 5 minutes", "Treats the team-wide rise in repeat contacts as Ali''s fault", "Ends without an agreed action or follow-up"], "cycle": {"conversation": ["Build rapport", "Listen, question, connect", "Agree on the root causes (RCAs)", "Build the action plan", "Start / Stop / Continue", "Gain commitment"], "funnel": ["Opening the conversation", "Probing further", "Finding the root cause", "Creating an action plan", "Offering help", "Gaining commitment", "Debrief and putting it all together"]}, "draft": "Version B (Team 12, chat) adapted from Version A. Review wording with COE before use."}'::jsonb where module = 1 and family = 'case-1' and version = 'B';
+update public.scenarios set title = 'Case 2: Tenured top performer slipping on QA and CSAT (Lina) · Team 12', brief = '{"agent": "Lina", "archetype": "Coach a tenured member with low scores on the top two program metrics", "public": {"headline": "Lina has missed her QA and CSAT targets for the last two weeks.", "observations": ["Lina has been on the program for 2 years and was the team''s top QA performer until W3.", "Lina''s QA fell from 95% in W3 to 86% in W6 and her last two QA evaluations were 81% and 80% (target 82%). Her CSAT slipped from 4.6 to 4.2.", "Lina missed 2 of the last 3 huddles and keeps her camera off in team meetings.", "In the last four chats you monitored:", "a) In 3 of 4 chats Lina ended the chat without asking if there was anything else or offering the retention offer.", "b) In 2 of 4 chats Lina talked over the customer while they were explaining the problem.", "c) Lina still has the lowest repeat contact rate on the team (13.1%)."]}, "hidden": "Lina applied for the SME role in W3. Wei got it and nobody explained the decision to her. She feels unrecognised and has started looking at other jobs. She will only open up if she feels listened to.", "unlock": "An open question about how work feels for her lately, or what has changed for her since W3.", "twists": [{"minute": 8, "line": "“My numbers are still better than most of the team.”", "tests": "Acknowledges her strengths and stays on the gap without arguing"}, {"minute": 14, "line": "“I applied for the SME role, you know. Nobody even told me why I didn''t get it.”", "tests": "Responds with empathy and addresses the career question alongside performance"}], "good": ["Opens with genuine rapport and recognition of her track record.", "Uses open and probing questions; lets Lina reach the link between W3 and the drop.", "Treats the career disappointment as a root cause to address, not an excuse.", "Agrees a Start / Stop / Continue (e.g. start: full chat closing; stop: talking over customers; continue: efficient handling).", "Commits to a follow-up on the SME decision and a development path, with a date."], "red_flags": ["Lectures Lina on expectations without asking", "Ignores the career disappointment when it surfaces", "Speculates about her private life"], "cycle": {"conversation": ["Build rapport", "Listen, question, connect", "Agree on the root causes (RCAs)", "Build the action plan", "Start / Stop / Continue", "Gain commitment"], "funnel": ["Opening the conversation", "Probing further", "Finding the root cause", "Creating an action plan", "Offering help", "Gaining commitment", "Debrief and putting it all together"]}, "draft": "Version B (Team 12, chat) adapted from Version A. Review wording with COE before use."}'::jsonb where module = 1 and family = 'case-2' and version = 'B';
+update public.scenarios set title = 'Case 3: Tenured agent not following process or using the KB (Aisha) · Team 12', brief = '{"agent": "Aisha", "archetype": "Coach a tenured member who does not use available program resources like the KB", "public": {"headline": "Aisha received a QA red flag this week for skipping part of the new refund-approval step.", "observations": ["Aisha has been on the program for 4 years and new hires often go to him for help.", "QA red-flagged 3 of Aisha''s chats this week: the new refund-approval step was not completed (approval reason left blank).", "Aisha has not opened the KB or the team channel since W4 (team average: 18 KB views a week).", "Two customers called back after Aisha processed their refunds, because the change used the old process.", "Aisha''s repeat contacts (14.5%) and CSAT (4.4) are in line with the team."]}, "hidden": "Aisha was on leave in W4 and missed the briefing on the new refund-approval step. She believes the KB is out of date, so she stopped checking it. She is proud of her experience and will get defensive if lectured.", "unlock": "A question about how she found out about the new refund-approval step, or what she does when she is unsure of a process.", "twists": [{"minute": 8, "line": "“I''ve done this job for four years. I don''t need the KB.”", "tests": "Respects her experience while keeping the compliance risk on the table"}, {"minute": 14, "line": "“Wait, they changed the step in W4? I was on leave that week.”", "tests": "Integrates new information: shifts from attitude to a missed update"}], "good": ["Acknowledges Aisha''s experience and value to new hires.", "Explains the impact of the skipped step (customer security, compliance, repeat chats) factually.", "Discovers the missed W4 briefing through questions rather than assuming attitude.", "Action plan fits Aisha''s style: a mock chat on the new step, KB check for process changes, maybe asks her to help brief others.", "SMART follow-up: e.g. next 10 chats fully compliant, QA re-check next week."], "red_flags": ["Threatens disciplinary action before exploring the cause", "Just tells Aisha to read the KB", "Leaves the compliance risk unaddressed"], "cycle": {"conversation": ["Build rapport", "Listen, question, connect", "Agree on the root causes (RCAs)", "Build the action plan", "Start / Stop / Continue", "Gain commitment"], "funnel": ["Opening the conversation", "Probing further", "Finding the root cause", "Creating an action plan", "Offering help", "Gaining commitment", "Debrief and putting it all together"]}, "draft": "Version B (Team 12, chat) adapted from Version A. Review wording with COE before use."}'::jsonb where module = 1 and family = 'case-3' and version = 'B';
+update public.scenarios set title = 'Spare case: Saturday absences (Tariq) · Team 12', brief = '{"agent": "Tariq", "archetype": "Coach an agent on an attendance pattern", "public": {"headline": "Tariq accounts for 4 of the team''s 12 Saturday absences since W2.", "observations": ["Tariq has been on the team for 1.5 years and their chat quality is solid (QA 88%).", "Tariq was absent on 4 Saturdays since W2 and logged in late on two more. His attendance is 88% (team 96%).", "Tariq works the Saturday early shift, which now starts at 06:00 (changed in W2).", "Tariq has not raised any concern with you."]}, "hidden": "Since the Saturday shift moved to 06:00 the first bus arrives too late; Tariq cannot get in on time. He is embarrassed to mention it.", "unlock": "A question about what changed for him around W2, or what their Sunday nights look like.", "twists": [{"minute": 8, "line": "“I''m here every other day, aren''t I?”", "tests": "Stays factual about the pattern without accusing"}, {"minute": 14, "line": "“Since the shift moved, the first bus doesn''t get me here before 06:00.”", "tests": "Integrates new information and looks for a practical solution"}], "good": ["Opens with rapport and recognises their chat quality.", "Presents the attendance pattern neutrally and asks before assuming.", "Links the pattern to the W2 shift change through Tariq''s own account.", "Agrees a practical plan (shift swap, transport option, escalate to WFM) with a follow-up date."], "red_flags": ["Opens with a warning", "Ignores the transport issue once raised", "No follow-up agreed"], "cycle": {"conversation": ["Build rapport", "Listen, question, connect", "Agree on the root causes (RCAs)", "Build the action plan", "Start / Stop / Continue", "Gain commitment"], "funnel": ["Opening the conversation", "Probing further", "Finding the root cause", "Creating an action plan", "Offering help", "Gaining commitment", "Debrief and putting it all together"]}, "draft": "Version B (Team 12, chat) adapted from Version A. Review wording with COE before use."}'::jsonb where module = 1 and family = 'spare' and version = 'B';
+
+-- ---------------------------------------------------------------------------
+-- Timers: 10 minutes to prepare (choose the agent, plan the session) and 10 minutes to
+-- document the coaching after the live session.
+-- ---------------------------------------------------------------------------
+update public.settings
+   set value = value || '{"m1_readout_sec": 600, "m1_doc_sec": 600}'::jsonb, updated_at = now()
+ where key = 'timers';
+
+-- Graders tick the coaching-cycle and funnel stages they saw in the live session.
+alter table public.gradings add column checklist jsonb not null default '{}'::jsonb;
+
+-- ---------------------------------------------------------------------------
+-- The facilitator-visible part of the case: the flagged agent and the observations.
+-- Scenarios stay grader-only; this hands over brief.public only, and only after the
+-- facilitator has started Module 1 (the timer is running).
+-- ---------------------------------------------------------------------------
+create function public.case_brief(p_submission uuid) returns jsonb
+language sql stable security definer set search_path = '' as $$
+  select jsonb_build_object('agent', sc.brief ->> 'agent', 'public', sc.brief -> 'public')
+  from public.module_submissions ms
+  join public.scenarios sc on sc.id = ms.scenario_id
+  where ms.id = p_submission and ms.module = 1 and ms.started_at is not null
+    and public.owns_submission(p_submission)
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Module 1 gains a Documentation phase after the live session:
+--   dashboard -> readout (preparation) -> coaching (live) -> documentation -> documented
+-- ---------------------------------------------------------------------------
+create or replace function public.sync_submission(p_submission uuid) returns public.module_submissions
+language plpgsql security definer set search_path = '' as $$
+declare
+  s public.module_submissions;
+  grace interval := make_interval(secs => public.setting_int(array['timers', 'grace_sec'], 10));
+begin
+  if not (public.owns_submission(p_submission) or public.can_grade_submission(p_submission)) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  select * into s from public.module_submissions where id = p_submission for update;
+
+  if s.status = 'in_progress' and s.module = 1 and s.phase = 'dashboard' and now() > s.phase_deadline then
+    update public.module_submissions
+       set phase = 'readout',
+           phase_deadline = s.phase_deadline
+             + make_interval(secs => public.setting_int(array['timers', 'm1_readout_sec'], 600))
+     where id = s.id returning * into s;
+  end if;
+
+  if s.status = 'in_progress' and s.phase in ('readout', 'debrief') and now() > s.phase_deadline + grace then
+    update public.module_submissions
+       set status = 'submitted',
+           phase = case when s.module = 1 then 'coaching' else 'locked' end,
+           submitted_at = s.phase_deadline
+     where id = s.id returning * into s;
+  end if;
+
+  -- The coaching form happens after the live session, possibly after grading has started,
+  -- so it moves the phase only and never touches status or result.
+  if s.phase = 'documentation' and now() > s.phase_deadline + grace then
+    update public.module_submissions set phase = 'documented' where id = s.id returning * into s;
+  end if;
+
+  return s;
+end $$;
+
+-- Moves on: M1 dashboard -> readout, M1 coaching -> documentation (only once the live
+-- session has started), M2 watching -> debrief.
+create or replace function public.advance_phase(p_submission uuid) returns public.module_submissions
+language plpgsql security definer set search_path = '' as $$
+declare
+  s public.module_submissions;
+begin
+  if not public.owns_submission(p_submission) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  s := public.sync_submission(p_submission);
+
+  if s.module = 1 and s.phase = 'coaching' and s.status in ('submitted', 'graded') then
+    if s.session_at is null or now() < s.session_at then
+      raise exception 'The coaching form opens once your live session has started.';
+    end if;
+    update public.module_submissions
+       set phase = 'documentation',
+           phase_deadline = now() + make_interval(secs => public.setting_int(array['timers', 'm1_doc_sec'], 600))
+     where id = s.id returning * into s;
+    return s;
+  end if;
+
+  if s.status <> 'in_progress' then
+    return s;
+  end if;
+  if s.module = 1 and s.phase = 'dashboard' then
+    update public.module_submissions
+       set phase = 'readout',
+           phase_deadline = now() + make_interval(secs => public.setting_int(array['timers', 'm1_readout_sec'], 600))
+     where id = s.id returning * into s;
+  elsif s.module = 2 and s.phase = 'watching' then
+    update public.module_submissions
+       set phase = 'debrief',
+           phase_deadline = now() + make_interval(secs => public.setting_int(array['timers', 'm2_debrief_sec'], 1500))
+     where id = s.id returning * into s;
+  end if;
+  return s;
+end $$;
+
+-- Saves the M1 preparation (phase 'readout'), M1 coaching form (phase 'documentation',
+-- stored in the debrief column) or M2 debrief (phase 'debrief'). p_final submits and locks.
+create or replace function public.save_response(p_submission uuid, p_content jsonb, p_final boolean default false)
+returns public.module_submissions
+language plpgsql security definer set search_path = '' as $$
+declare
+  s public.module_submissions;
+begin
+  if not public.owns_submission(p_submission) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  if jsonb_typeof(p_content) <> 'object' or length(p_content::text) > 30000 then
+    raise exception 'Response is too long.';
+  end if;
+  s := public.sync_submission(p_submission);
+
+  -- Module 1 coaching form: phase-driven, independent of status (grading may have started).
+  if s.module = 1 and s.phase = 'documentation' then
+    update public.module_submissions
+       set debrief = p_content,
+           phase = case when p_final then 'documented' else phase end
+     where id = s.id returning * into s;
+    return s;
+  end if;
+
+  if s.status <> 'in_progress' or s.phase not in ('readout', 'debrief') then
+    return s; -- locked: caller shows the locked state
+  end if;
+
+  if s.phase = 'readout' then
+    update public.module_submissions set readout = p_content where id = s.id returning * into s;
+  else
+    update public.module_submissions set debrief = p_content where id = s.id returning * into s;
+  end if;
+
+  if p_final then
+    update public.module_submissions
+       set status = 'submitted',
+           phase = case when s.module = 1 then 'coaching' else 'locked' end,
+           submitted_at = now()
+     where id = s.id returning * into s;
+  end if;
+  return s;
+end $$;
+
+revoke execute on function public.case_brief(uuid) from public, anon;
+grant execute on function public.case_brief(uuid) to authenticated;
+
