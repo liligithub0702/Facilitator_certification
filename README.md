@@ -57,6 +57,8 @@ src/proxy.ts           session refresh + sign-in redirect (Next 16 "proxy", form
    npx supabase db push          # applies supabase/migrations (seed.sql is local-only)
    ```
 
+   No terminal? Paste `supabase/setup-all.sql` (all migrations joined in order) into the dashboard's **SQL Editor** once and click **Run**. Regenerate it whenever a migration is added.
+
 ### 2. Configure Supabase Auth (dashboard → Authentication)
 
 - **Sign In / Providers → User signups:** turn off "Allow new users to sign up". Keep the **Email** provider enabled.
