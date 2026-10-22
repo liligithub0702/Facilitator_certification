@@ -96,7 +96,7 @@ In **Storage → module2-recordings**, upload the four videos with these exact f
 ### 6. Run a cycle
 
 1. **Admin → Cohorts:** create a cohort of 3–4 people with a region and week, add facilitators, and assign two graders. Click **Auto-assign**, then check the warnings.
-2. Set the Module 1 coaching slot per facilitator from the grader's submission page (the facilitator's coaching form opens once that time has passed), and the Module 3 teach-back date on the cohort page.
+2. Set the Module 1 coaching slot per facilitator from the grader's submission page (after the live session the facilitator presses a button to open their coaching form), and the Module 3 teach-back date on the cohort page.
 3. Graders attach the Teams recording links and grade. A second grader on the same submission counts as a calibration grading, and the app shows the per-dimension differences.
 4. After grading, open **Outcome & exec summary** and confirm the outcome. Draft the summary, edit it and approve it.
 5. If a module is not passed, the cohort page offers **Open reassessment**: a second try on Version B or the spare case.

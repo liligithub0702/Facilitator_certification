@@ -140,7 +140,6 @@ export default async function ModulePage({ params }: PageProps<"/facilitator/mod
 
     const { data: recordings } = await supabase.from("recordings").select("id, url, label").eq("submission_id", s.id);
     const documented = s.phase === "documented";
-    const sessionStarted = s.session_at ? new Date(s.session_at).getTime() <= serverNow : false;
     return (
       <div className="space-y-5">
         {back}
@@ -162,15 +161,15 @@ export default async function ModulePage({ params }: PageProps<"/facilitator/mod
                 The certifier will play {chosen}. It&apos;s your first coaching session with them this month: build rapport, listen and question,
                 agree the root causes, build the action plan together and gain commitment.
               </p>
-              <div className="flex flex-wrap items-center gap-3 rounded-chip bg-canvas p-3 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-chip bg-canvas p-4 text-sm">
                 <span>
-                  <strong>After the session:</strong> document it on the coaching form (10 minutes).
+                  <strong>Finished the live session?</strong> Move on to document it on the coaching form (10 minutes).
                 </span>
-                {sessionStarted ? (
-                  <AdvanceButton id={s.id} label="Open the coaching form" confirm="Start the 10-minute coaching form now? Do this straight after your live session." />
-                ) : (
-                  <span className="badge">Opens when your session starts</span>
-                )}
+                <AdvanceButton
+                  id={s.id}
+                  label="I've finished coaching: document the session"
+                  confirm={`Have you finished your live session with ${chosen}? The 10-minute coaching form starts now and you can't come back to this step.`}
+                />
               </div>
             </>
           )}

@@ -138,7 +138,7 @@ export default async function GradeSubmission({ params }: PageProps<"/grader/sub
                     ))}
                   </dl>
                 ) : (
-                  <p className="muted">Written by the facilitator after the live session. It opens for them once the session time you set below has passed.</p>
+                  <p className="muted">Written by the facilitator after the live session, when they press “I&apos;ve finished coaching” on their Module 1 page.</p>
                 )}
               </section>
             </>

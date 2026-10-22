@@ -62,12 +62,7 @@ select pg_temp.expect((select phase from advance_phase((select v from ctx where 
 select pg_temp.expect((select status from save_response((select v from ctx where k = 'm1'), '{"observations":"trend"}', true)) = 'submitted', 'readout submits');
 select pg_temp.expect((select readout->>'observations' from save_response((select v from ctx where k = 'm1'), '{"observations":"changed"}', true)) = 'trend', 'readout locked after submit');
 select pg_temp.expect_error($$update module_submissions set readout = '{}' where id = (select v from ctx where k = 'm1')$$, 'direct update of readout');
-select pg_temp.expect_error($$select advance_phase((select v from ctx where k = 'm1'))$$, 'coaching form closed before the live session');
-reset role;
-update module_submissions set session_at = now() - interval '1 minute' where id = (select v from ctx where k = 'm1');
-set local role authenticated;
-set local request.jwt.claim.sub = '44444444-4444-4444-4444-444444444441';
-select pg_temp.expect((select phase from advance_phase((select v from ctx where k = 'm1'))) = 'documentation', 'coaching form opens after the session starts');
+select pg_temp.expect((select phase from advance_phase((select v from ctx where k = 'm1'))) = 'documentation', 'coaching form opens with the button, no session time needed');
 select pg_temp.expect((select phase from save_response((select v from ctx where k = 'm1'), '{"start":"x"}', true)) = 'documented', 'coaching form submits');
 update module_submissions set result = 'passed' where id = (select v from ctx where k = 'm1');
 select pg_temp.expect((select result is null from module_submissions where id = (select v from ctx where k = 'm1')), 'facilitator cannot set own result');

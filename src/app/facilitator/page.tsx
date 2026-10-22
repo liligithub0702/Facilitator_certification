@@ -238,7 +238,7 @@ function nextStep({
   fmt: (iso: string | null) => string | null;
 }): { title: string; body: string; cta?: string; href?: string } | null {
   if (!consented) return null;
-  if (m1 && (m1.phase === "documentation" || (m1.phase === "coaching" && m1.session_at && new Date(m1.session_at) <= new Date()))) {
+  if (m1 && m1.phase === "documentation") {
     return {
       title: m1.phase === "documentation" ? "Finish your coaching form" : `Document your session with ${m1.readout.agent || "your agent"}`,
       body: "Coaching cycle stages 3 and 4: Start / Stop / Continue, a SMART action plan and your follow-through plan. It's timed at 10 minutes.",
@@ -263,8 +263,8 @@ function nextStep({
           : m1.phase === "documentation"
             ? "Your 10-minute coaching form is open. Complete it before the timer runs out."
             : m1.session_at
-              ? `Your preparation is in. Your live session with ${m1.readout.agent || "your agent"} is on ${fmt(m1.session_at)}. Afterwards, document it on the coaching form.`
-              : `Your preparation is in. Your certifier will schedule the live session with ${m1.readout.agent || "your agent"}; the time will appear here.`,
+              ? `Your preparation is in. Your live session with ${m1.readout.agent || "your agent"} is on ${fmt(m1.session_at)}. When you've finished, open Module 1 and press the button to document it.`
+              : `Your preparation is in. Next is the live session with ${m1.readout.agent || "your agent"}. When you've finished, open Module 1 and press the button to document it.`,
       cta: m1.phase === "documentation" ? "Open the coaching form" : "Open Module 1",
       href: `/facilitator/module/${m1.id}`,
     };
